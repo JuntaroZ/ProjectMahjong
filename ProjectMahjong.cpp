@@ -14,6 +14,7 @@
 #endif
 
 #include <windows.h>
+#include <windowsx.h>
 #include <gdiplus.h>
 
 #pragma comment(lib, "gdiplus.lib")
@@ -28,9 +29,12 @@ constexpr int CandidateFramePadding = 6;
 constexpr int CandidateRowGap = 42;
 constexpr int MaxWinningCandidateCount = 13;
 constexpr int WindowPadding = 16;
-constexpr int YakuAreaHeight = 66;
+constexpr int YakuAreaHeight = 248;
 constexpr int SelectionPadding = 6;
 constexpr int SelectionPenWidth = 3;
+constexpr int SortButtonWidth = 124;
+constexpr int TsumoRonButtonWidth = 150;
+constexpr int SortButtonHeight = 28;
 
 struct TileImage {
     std::wstring fileName;
@@ -51,8 +55,10 @@ std::filesystem::path g_imageDirectory;
 std::size_t g_selectedTile = 0;
 ULONG_PTR g_gdiplusToken = 0;
 
-std::vector<std::wstring> CollectDisplayYakuNames();
+std::vector<std::wstring> CollectDisplayYakuLines();
 RECT TileImageRect(std::size_t index);
+RECT SortButtonRect();
+RECT TsumoRonButtonRect();
 
 int TileTop()
 {
@@ -83,23 +89,27 @@ void UpdateYakuText()
     }
 
     try {
-        const std::vector<std::wstring> yakuNames = CollectDisplayYakuNames();
+        const mahjong::HandViewAnalysis analysis = mahjong::AnalyzeHandView(g_hand, g_context);
+        if (!analysis.winning && !analysis.ready) {
+            g_yakuText.clear();
+            return;
+        }
 
-        if (yakuNames.empty()) {
+        const std::vector<std::wstring> yakuLines = CollectDisplayYakuLines();
+
+        if (yakuLines.empty()) {
             g_yakuText = L"成立役: なし";
             return;
         }
 
-        g_yakuText = L"成立役: ";
-        for (std::size_t i = 0; i < yakuNames.size(); ++i) {
-            if (i > 0) {
-                g_yakuText += L" / ";
-            }
-            g_yakuText += yakuNames[i];
+        g_yakuText = L"成立役:";
+        for (const std::wstring& line : yakuLines) {
+            g_yakuText += L"\n";
+            g_yakuText += line;
         }
     }
     catch (...) {
-        g_yakuText = L"成立役: なし";
+        g_yakuText.clear();
     }
 }
 
@@ -170,6 +180,38 @@ std::wstring TileImageFileName(const mahjong::Tile& tile)
     std::wstringstream fileName;
     fileName << suit << tile.rank << L".png";
     return fileName.str();
+}
+
+int TileSortIndex(const mahjong::Tile& tile)
+{
+    int suitIndex = 0;
+    switch (tile.suit) {
+    case mahjong::Suit::Man:
+        suitIndex = 0;
+        break;
+    case mahjong::Suit::Pin:
+        suitIndex = 1;
+        break;
+    case mahjong::Suit::Sou:
+        suitIndex = 2;
+        break;
+    case mahjong::Suit::Honor:
+        suitIndex = 3;
+        break;
+    }
+
+    return suitIndex * 10 + tile.rank;
+}
+
+void SortHand()
+{
+    const auto sortEnd = g_hand.size() == 14 ? g_hand.end() - 1 : g_hand.end();
+    std::sort(g_hand.begin(), sortEnd, [](const mahjong::Tile& left, const mahjong::Tile& right) {
+        return TileSortIndex(left) < TileSortIndex(right);
+    });
+    if (!g_hand.empty()) {
+        g_selectedTile = std::min(g_selectedTile, g_hand.size() - 1);
+    }
 }
 
 std::filesystem::path ExecutableDirectory()
@@ -258,16 +300,21 @@ void UpdateWinningCandidates()
     LoadWinningCandidateImages();
 }
 
-std::vector<std::wstring> CollectDisplayYakuNames()
+std::vector<std::wstring> CollectDisplayYakuLines()
 {
     const std::vector<mahjong::Yaku> yaku = mahjong::EvaluateDisplayYaku(g_hand, g_context, g_winningCandidates);
+    const std::vector<mahjong::YakuScore> scores = mahjong::CalculateDisplayYakuScores(yaku, g_context);
 
-    std::vector<std::wstring> wideNames;
-    wideNames.reserve(yaku.size());
-    for (const mahjong::Yaku& item : yaku) {
-        wideNames.push_back(Utf8ToWide(item.name));
+    std::vector<std::wstring> lines;
+    lines.reserve(scores.size());
+    for (const mahjong::YakuScore& score : scores) {
+        std::wstring line = Utf8ToWide(score.yaku.name);
+        line += L"（";
+        line += Utf8ToWide(score.text);
+        line += L"）";
+        lines.push_back(std::move(line));
     }
-    return wideNames;
+    return lines;
 }
 
 int TileRankLimit(mahjong::Suit suit)
@@ -501,6 +548,42 @@ void InvalidateYakuArea(HWND hwnd)
     InvalidateRect(hwnd, &rect, FALSE);
 }
 
+void InvalidateYakuTextArea(HWND hwnd)
+{
+    RECT rect{ 0, 0, 4096, 210 };
+    InvalidateRect(hwnd, &rect, FALSE);
+}
+
+RECT SortButtonRect()
+{
+    const int left = WindowPadding;
+    const int top = 214;
+    return {
+        left,
+        top,
+        left + SortButtonWidth,
+        top + SortButtonHeight
+    };
+}
+
+RECT TsumoRonButtonRect()
+{
+    const RECT sortRect = SortButtonRect();
+    const int left = sortRect.right + 10;
+    const int top = sortRect.top;
+    return {
+        left,
+        top,
+        left + TsumoRonButtonWidth,
+        top + SortButtonHeight
+    };
+}
+
+bool IsPointInRect(const RECT& rect, int x, int y)
+{
+    return x >= rect.left && x < rect.right && y >= rect.top && y < rect.bottom;
+}
+
 void InvalidateCandidateArea(HWND hwnd, const RECT& rect)
 {
     if (rect.right <= rect.left || rect.bottom <= rect.top) {
@@ -665,7 +748,7 @@ void DrawMissingTile(Gdiplus::Graphics& graphics, int x, int y, const std::wstri
 void DrawYakuText(Gdiplus::Graphics& graphics)
 {
     Gdiplus::FontFamily fontFamily(L"Yu Gothic UI");
-    Gdiplus::Font font(&fontFamily, 18.0f, Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
+    Gdiplus::Font font(&fontFamily, 15.0f, Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
     Gdiplus::Font smallFont(&fontFamily, 16.0f, Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
     Gdiplus::SolidBrush textBrush(
         g_invalidTileSelection
@@ -676,10 +759,10 @@ void DrawYakuText(Gdiplus::Graphics& graphics)
         static_cast<Gdiplus::REAL>(WindowPadding),
         8.0f,
         1600.0f,
-        24.0f);
+        176.0f);
     Gdiplus::RectF shantenRect(
         static_cast<Gdiplus::REAL>(WindowPadding),
-        34.0f,
+        186.0f,
         1600.0f,
         22.0f);
 
@@ -687,6 +770,62 @@ void DrawYakuText(Gdiplus::Graphics& graphics)
     if (!g_shantenText.empty()) {
         graphics.DrawString(g_shantenText.c_str(), -1, &smallFont, shantenRect, nullptr, &subTextBrush);
     }
+}
+
+void DrawSortButton(Gdiplus::Graphics& graphics)
+{
+    RECT rect = SortButtonRect();
+    Gdiplus::Rect buttonRect(
+        rect.left,
+        rect.top,
+        rect.right - rect.left,
+        rect.bottom - rect.top);
+
+    Gdiplus::SolidBrush buttonBrush(Gdiplus::Color(255, 238, 244, 240));
+    Gdiplus::Pen borderPen(Gdiplus::Color(255, 34, 86, 58), 2.0f);
+    graphics.FillRectangle(&buttonBrush, buttonRect);
+    graphics.DrawRectangle(&borderPen, buttonRect);
+
+    Gdiplus::FontFamily fontFamily(L"Yu Gothic UI");
+    Gdiplus::Font font(&fontFamily, 14.0f, Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
+    Gdiplus::SolidBrush textBrush(Gdiplus::Color(255, 20, 60, 40));
+    Gdiplus::StringFormat format;
+    format.SetAlignment(Gdiplus::StringAlignmentCenter);
+    format.SetLineAlignment(Gdiplus::StringAlignmentCenter);
+    graphics.DrawString(L"配牌ソート", -1, &font, Gdiplus::RectF(
+        static_cast<Gdiplus::REAL>(rect.left),
+        static_cast<Gdiplus::REAL>(rect.top),
+        static_cast<Gdiplus::REAL>(rect.right - rect.left),
+        static_cast<Gdiplus::REAL>(rect.bottom - rect.top)), &format, &textBrush);
+}
+
+void DrawTsumoRonButton(Gdiplus::Graphics& graphics)
+{
+    RECT rect = TsumoRonButtonRect();
+    Gdiplus::Rect buttonRect(
+        rect.left,
+        rect.top,
+        rect.right - rect.left,
+        rect.bottom - rect.top);
+
+    Gdiplus::SolidBrush buttonBrush(Gdiplus::Color(255, 238, 244, 240));
+    Gdiplus::Pen borderPen(Gdiplus::Color(255, 34, 86, 58), 2.0f);
+    graphics.FillRectangle(&buttonBrush, buttonRect);
+    graphics.DrawRectangle(&borderPen, buttonRect);
+
+    Gdiplus::FontFamily fontFamily(L"Yu Gothic UI");
+    Gdiplus::Font font(&fontFamily, 14.0f, Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
+    Gdiplus::SolidBrush textBrush(Gdiplus::Color(255, 20, 60, 40));
+    Gdiplus::StringFormat format;
+    format.SetAlignment(Gdiplus::StringAlignmentCenter);
+    format.SetLineAlignment(Gdiplus::StringAlignmentCenter);
+
+    const std::wstring label = L"ツモ／ロン切替";
+    graphics.DrawString(label.c_str(), -1, &font, Gdiplus::RectF(
+        static_cast<Gdiplus::REAL>(rect.left),
+        static_cast<Gdiplus::REAL>(rect.top),
+        static_cast<Gdiplus::REAL>(rect.right - rect.left),
+        static_cast<Gdiplus::REAL>(rect.bottom - rect.top)), &format, &textBrush);
 }
 
 void DrawInvalidTileOverlay(Gdiplus::Graphics& graphics)
@@ -761,6 +900,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
             static_cast<INT>(paint.rcPaint.bottom - paint.rcPaint.top));
         graphics.FillRectangle(&backgroundBrush, paintRect);
         DrawYakuText(graphics);
+        DrawSortButton(graphics);
+        DrawTsumoRonButton(graphics);
 
         for (std::size_t i = 0; i < g_tileImages.size(); ++i) {
             const TileImage& tileImage = g_tileImages[i];
@@ -821,7 +962,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
             UpdateWinningCandidates();
             UpdateYakuText();
             UpdateShantenText();
-            InvalidateYakuArea(hwnd);
+            InvalidateYakuTextArea(hwnd);
             InvalidateTile(hwnd, g_selectedTile);
             InvalidateCandidateArea(hwnd, oldCandidateArea);
             InvalidateCandidateArea(hwnd, CandidateAreaRect());
@@ -839,29 +980,42 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
             UpdateWinningCandidates();
             UpdateYakuText();
             UpdateShantenText();
-            InvalidateYakuArea(hwnd);
+            InvalidateYakuTextArea(hwnd);
             InvalidateTile(hwnd, g_selectedTile);
             InvalidateCandidateArea(hwnd, oldCandidateArea);
             InvalidateCandidateArea(hwnd, CandidateAreaRect());
             return 0;
         }
-        case VK_SPACE:
-            if (!g_tileImages.empty() && g_selectedTile == g_tileImages.size() - 1) {
-                g_tsumoRonLabelTouched = true;
-                g_isRonTile = !g_isRonTile;
-                UpdateWinningTileFromHand();
-                UpdateWinningCandidates();
-                UpdateYakuText();
-                UpdateShantenText();
-                InvalidateYakuArea(hwnd);
-                InvalidateTsumoLabelArea(hwnd);
-                InvalidateCandidateArea(hwnd, CandidateAreaRect());
-            }
-            return 0;
         default:
             break;
         }
         break;
+    case WM_LBUTTONDOWN: {
+        const int x = GET_X_LPARAM(lParam);
+        const int y = GET_Y_LPARAM(lParam);
+        if (IsPointInRect(SortButtonRect(), x, y)) {
+            SortHand();
+            LoadTileImages(g_hand);
+            UpdateWinningTileFromHand();
+            UpdateInvalidTileSelection();
+            UpdateWinningCandidates();
+            UpdateYakuText();
+            UpdateShantenText();
+            InvalidateRect(hwnd, nullptr, FALSE);
+            return 0;
+        }
+        if (IsPointInRect(TsumoRonButtonRect(), x, y)) {
+            g_tsumoRonLabelTouched = true;
+            g_isRonTile = !g_isRonTile;
+            UpdateWinningTileFromHand();
+            UpdateWinningCandidates();
+            UpdateYakuText();
+            UpdateShantenText();
+            InvalidateRect(hwnd, nullptr, FALSE);
+            return 0;
+        }
+        break;
+    }
     case WM_DESTROY:
         PostQuitMessage(0);
         return 0;

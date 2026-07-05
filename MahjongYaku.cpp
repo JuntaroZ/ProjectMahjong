@@ -7,6 +7,7 @@
 #include <array>
 #include <memory>
 #include <stdexcept>
+#include <sstream>
 
 namespace mahjong {
 namespace {
@@ -149,6 +150,69 @@ void AddYakuResultNames(std::vector<Yaku>& yaku, const YakuResult& result)
     for (const Yaku& item : result.yaku) {
         AddDisplayYakuName(yaku, item);
     }
+}
+
+int RoundUp100(int value)
+{
+    return ((value + 99) / 100) * 100;
+}
+
+int DisplayFuForYaku(const Yaku& yaku, const HandContext& context)
+{
+    if (yaku.name == u8"七対子") {
+        return 25;
+    }
+    if (yaku.name == u8"平和" && context.isTsumo) {
+        return 20;
+    }
+    return 30;
+}
+
+int BasePointsForYaku(const Yaku& yaku, const HandContext& context)
+{
+    if (yaku.yakuman) {
+        return 8000;
+    }
+
+    const int han = yaku.han;
+    if (han >= 13) {
+        return 8000;
+    }
+    if (han >= 11) {
+        return 6000;
+    }
+    if (han >= 8) {
+        return 4000;
+    }
+    if (han >= 6) {
+        return 3000;
+    }
+
+    const int fu = DisplayFuForYaku(yaku, context);
+    int basePoints = fu;
+    for (int i = 0; i < han + 2; ++i) {
+        basePoints *= 2;
+    }
+
+    if (han >= 5 || basePoints >= 2000) {
+        return 2000;
+    }
+    return basePoints;
+}
+
+int DisplayScorePointsForYaku(const Yaku& yaku, const HandContext& context)
+{
+    return RoundUp100(BasePointsForYaku(yaku, context) * 4);
+}
+
+std::string ScoreTextForYaku(const Yaku& yaku, const HandContext& context)
+{
+    const int points = DisplayScorePointsForYaku(yaku, context);
+    std::ostringstream text;
+
+    text << yaku.han << (yaku.yakuman ? u8"翻（役満）" : u8"翻") << u8" / ";
+    text << points << u8"点";
+    return text.str();
 }
 
 } // namespace
@@ -366,6 +430,22 @@ std::vector<Yaku> EvaluateDisplayYaku(const std::vector<Tile>& hand, const HandC
     }
 
     return yaku;
+}
+
+std::vector<YakuScore> CalculateDisplayYakuScores(const std::vector<Yaku>& yaku, const HandContext& context)
+{
+    std::vector<YakuScore> scores;
+    scores.reserve(yaku.size());
+
+    for (const Yaku& item : yaku) {
+        YakuScore score;
+        score.yaku = item;
+        score.points = DisplayScorePointsForYaku(item, context);
+        score.text = ScoreTextForYaku(item, context);
+        scores.push_back(std::move(score));
+    }
+
+    return scores;
 }
 
 HandViewAnalysis AnalyzeHandView(const std::vector<Tile>& hand, const HandContext& context)

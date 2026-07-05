@@ -53,6 +53,12 @@ struct YakuResult {
     std::vector<Yaku> yaku;
 };
 
+struct YakuScore {
+    Yaku yaku;
+    int points{ 0 };
+    std::string text;
+};
+
 struct HandViewAnalysis {
     bool invalidTileCount{ false };
     bool winning{ false };
@@ -76,6 +82,7 @@ bool HasInvalidTileCount(const std::vector<Tile>& tiles);
 int CalculateShanten(const std::vector<Tile>& tiles);
 std::vector<Tile> FindWinningCandidates(const std::vector<Tile>& hand, const HandContext& context);
 std::vector<Yaku> EvaluateDisplayYaku(const std::vector<Tile>& hand, const HandContext& context, const std::vector<Tile>& winningCandidates);
+std::vector<YakuScore> CalculateDisplayYakuScores(const std::vector<Yaku>& yaku, const HandContext& context);
 HandViewAnalysis AnalyzeHandView(const std::vector<Tile>& hand, const HandContext& context);
 std::string TileToString(const Tile& tile);
 
