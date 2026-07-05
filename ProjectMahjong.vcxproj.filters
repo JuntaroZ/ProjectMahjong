@@ -1,0 +1,57 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Source Files\YakuRules">
+      <UniqueIdentifier>{E5D9E4E0-64AF-4C87-9F4C-CB62B5D58B76}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files\YakuRules">
+      <UniqueIdentifier>{5F7F0C99-A420-43DC-A38A-78A8DBE8310D}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="YakuRules\ChankanRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="YakuRules\ChihoRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="YakuRules\ChiitoitsuRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="YakuRules\ChinitsuRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="YakuRules\HaiteiRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="YakuRules\HonitsuRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="YakuRules\HouteiRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="YakuRules\IipeikouRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="YakuRules\IppatsuRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="YakuRules\IttsuRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="YakuRules\KokushiRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="MahjongHandAnalysis.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="MahjongYaku.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="YakuRules\MenzenTsumoRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="YakuRules\PinfuRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="ProjectMahjong.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="YakuRules\RiichiRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="YakuRules\RinshanRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="YakuRules\SanankouRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="YakuRules\SanshokuDoujunRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="YakuRules\TanyaoRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="YakuRules\TenhoRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="YakuRules\ToitoiRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="YakuRules\YakuhaiRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="YakuRules\YakuRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="YakuRules\YakuRuleRegistry.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="MahjongHandAnalysis.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="MahjongYaku.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="YakuRules\YakuRule.h"><Filter>Header Files\YakuRules</Filter></ClInclude>
+    <ClInclude Include="YakuRules\YakuRules.h"><Filter>Header Files\YakuRules</Filter></ClInclude>
+  </ItemGroup>
+</Project>

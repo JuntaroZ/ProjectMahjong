@@ -1,0 +1,55 @@
+# Visual Studio
+.vs/
+*.user
+*.rsuser
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Build results
+[Dd]ebug/
+[Rr]elease/
+[Xx]64/
+[Xx]86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+ProjectMahjong/[Dd]ebug/
+ProjectMahjong/[Rr]elease/
+ProjectMahjong/[Xx]64/
+ProjectMahjong/[Xx]86/
+
+# C/C++ build intermediates
+*.obj
+*.iobj
+*.ipdb
+*.pdb
+*.idb
+*.ilk
+*.exe
+*.dll
+*.lib
+*.exp
+*.log
+*.tlog
+*.lastbuildstate
+*.recipe
+*.manifest
+*.res
+*.pch
+*.ipch
+
+# Visual Studio generated folders
+ipch/
+Generated Files/
+
+# Test and coverage output
+TestResults/
+*.coverage
+*.coveragexml
+
+# Local OS/editor noise
+.DS_Store
+Thumbs.db
+*.tmp
+*.bak
+*.swp
