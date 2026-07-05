@@ -53,6 +53,16 @@ struct YakuResult {
     std::vector<Yaku> yaku;
 };
 
+struct HandViewAnalysis {
+    bool invalidTileCount{ false };
+    bool winning{ false };
+    bool ready{ false };
+    bool riichiOnlyWin{ false };
+    int shanten{ 8 };
+    std::vector<Yaku> yaku;
+    std::vector<Tile> winningCandidates;
+};
+
 Tile Man(int rank);
 Tile Pin(int rank);
 Tile Sou(int rank);
@@ -60,6 +70,13 @@ Tile Honor(int rank);
 
 YakuResult EvaluateYaku(const std::vector<Tile>& closedTiles, const HandContext& context);
 YakuResult EvaluateCurrentYaku(const std::vector<Tile>& closedTiles, const HandContext& context);
+std::vector<Tile> AllTileKinds();
+int CountTile(const std::vector<Tile>& tiles, const Tile& target);
+bool HasInvalidTileCount(const std::vector<Tile>& tiles);
+int CalculateShanten(const std::vector<Tile>& tiles);
+std::vector<Tile> FindWinningCandidates(const std::vector<Tile>& hand, const HandContext& context);
+std::vector<Yaku> EvaluateDisplayYaku(const std::vector<Tile>& hand, const HandContext& context, const std::vector<Tile>& winningCandidates);
+HandViewAnalysis AnalyzeHandView(const std::vector<Tile>& hand, const HandContext& context);
 std::string TileToString(const Tile& tile);
 
 } // namespace mahjong

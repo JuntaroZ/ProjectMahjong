@@ -1,7 +1,6 @@
 #include "MahjongYaku.h"
 
 #include <algorithm>
-#include <array>
 #include <filesystem>
 #include <iostream>
 #include <memory>
@@ -52,7 +51,6 @@ std::filesystem::path g_imageDirectory;
 std::size_t g_selectedTile = 0;
 ULONG_PTR g_gdiplusToken = 0;
 
-int CalculateShanten(const std::vector<mahjong::Tile>& tiles);
 std::vector<std::wstring> CollectDisplayYakuNames();
 RECT TileImageRect(std::size_t index);
 
@@ -113,21 +111,17 @@ void UpdateShantenText()
     }
 
     try {
-        const int shanten = CalculateShanten(g_hand);
-        if (shanten < 0) {
-            const mahjong::YakuResult result = mahjong::EvaluateCurrentYaku(g_hand, g_context);
-            const bool hasNonRiichiYaku = std::any_of(result.yaku.begin(), result.yaku.end(), [](const mahjong::Yaku& yaku) {
-                return yaku.name != u8"立直";
-            });
-            g_shantenText = hasNonRiichiYaku ? L"和了" : L"和了（リーチのみ）";
+        const mahjong::HandViewAnalysis analysis = mahjong::AnalyzeHandView(g_hand, g_context);
+        if (analysis.winning) {
+            g_shantenText = analysis.riichiOnlyWin ? L"和了（リーチのみ）" : L"和了";
         }
-        else if (g_context.isRiichi && !g_winningCandidates.empty()) {
+        else if (analysis.ready) {
             g_shantenText = L"テンパイ";
         }
-        else if (shanten == 1) {
+        else if (analysis.shanten == 1) {
             g_shantenText = L"イーシャンテン";
         }
-        else if (shanten == 2) {
+        else if (analysis.shanten == 2) {
             g_shantenText = L"リャンシャンテン";
         }
         else {
@@ -139,160 +133,11 @@ void UpdateShantenText()
     }
 }
 
-std::vector<mahjong::Tile> AllTileKinds()
-{
-    std::vector<mahjong::Tile> tiles;
-    for (int rank = 1; rank <= 9; ++rank) {
-        tiles.push_back(mahjong::Man(rank));
-    }
-    for (int rank = 1; rank <= 9; ++rank) {
-        tiles.push_back(mahjong::Pin(rank));
-    }
-    for (int rank = 1; rank <= 9; ++rank) {
-        tiles.push_back(mahjong::Sou(rank));
-    }
-    for (int rank = 1; rank <= 7; ++rank) {
-        tiles.push_back(mahjong::Honor(rank));
-    }
-    return tiles;
-}
-
-int CountTile(const std::vector<mahjong::Tile>& tiles, const mahjong::Tile& target)
-{
-    return static_cast<int>(std::count(tiles.begin(), tiles.end(), target));
-}
-
-int TileKindIndex(const mahjong::Tile& tile)
-{
-    switch (tile.suit) {
-    case mahjong::Suit::Man:
-        return tile.rank - 1;
-    case mahjong::Suit::Pin:
-        return 9 + tile.rank - 1;
-    case mahjong::Suit::Sou:
-        return 18 + tile.rank - 1;
-    case mahjong::Suit::Honor:
-        return 27 + tile.rank - 1;
-    }
-    return 0;
-}
-
-std::array<int, 34> TileCounts(const std::vector<mahjong::Tile>& tiles)
-{
-    std::array<int, 34> counts{};
-    for (const mahjong::Tile& tile : tiles) {
-        ++counts[TileKindIndex(tile)];
-    }
-    return counts;
-}
-
-void SearchStandardShanten(std::array<int, 34>& counts, int index, int melds, int pairs, int taatsu, int& best)
-{
-    while (index < 34 && counts[index] == 0) {
-        ++index;
-    }
-    if (index >= 34) {
-        taatsu = std::min(taatsu, 4 - melds);
-        best = std::min(best, 8 - melds * 2 - taatsu - pairs);
-        return;
-    }
-
-    if (counts[index] >= 3) {
-        counts[index] -= 3;
-        SearchStandardShanten(counts, index, melds + 1, pairs, taatsu, best);
-        counts[index] += 3;
-    }
-
-    if (index < 27 && index % 9 <= 6 && counts[index + 1] > 0 && counts[index + 2] > 0) {
-        --counts[index];
-        --counts[index + 1];
-        --counts[index + 2];
-        SearchStandardShanten(counts, index, melds + 1, pairs, taatsu, best);
-        ++counts[index];
-        ++counts[index + 1];
-        ++counts[index + 2];
-    }
-
-    if (counts[index] >= 2) {
-        counts[index] -= 2;
-        SearchStandardShanten(counts, index, melds, pairs + 1, taatsu, best);
-        counts[index] += 2;
-    }
-
-    if (index < 27 && index % 9 <= 7 && counts[index + 1] > 0) {
-        --counts[index];
-        --counts[index + 1];
-        SearchStandardShanten(counts, index, melds, pairs, taatsu + 1, best);
-        ++counts[index];
-        ++counts[index + 1];
-    }
-
-    if (index < 27 && index % 9 <= 6 && counts[index + 2] > 0) {
-        --counts[index];
-        --counts[index + 2];
-        SearchStandardShanten(counts, index, melds, pairs, taatsu + 1, best);
-        ++counts[index];
-        ++counts[index + 2];
-    }
-
-    --counts[index];
-    SearchStandardShanten(counts, index, melds, pairs, taatsu, best);
-    ++counts[index];
-}
-
-int StandardShanten(const std::array<int, 34>& originalCounts)
-{
-    std::array<int, 34> counts = originalCounts;
-    int best = 8;
-    SearchStandardShanten(counts, 0, 0, 0, 0, best);
-    return best;
-}
-
-int SevenPairsShanten(const std::array<int, 34>& counts)
-{
-    int pairs = 0;
-    int kinds = 0;
-    for (int count : counts) {
-        if (count > 0) {
-            ++kinds;
-        }
-        if (count >= 2) {
-            ++pairs;
-        }
-    }
-
-    return 6 - pairs + std::max(0, 7 - kinds);
-}
-
-int KokushiShanten(const std::array<int, 34>& counts)
-{
-    const int requiredTiles[] = { 0, 8, 9, 17, 18, 26, 27, 28, 29, 30, 31, 32, 33 };
-    int kinds = 0;
-    bool hasPair = false;
-
-    for (int tile : requiredTiles) {
-        if (counts[tile] > 0) {
-            ++kinds;
-        }
-        if (counts[tile] >= 2) {
-            hasPair = true;
-        }
-    }
-
-    return 13 - kinds - (hasPair ? 1 : 0);
-}
-
-int CalculateShanten(const std::vector<mahjong::Tile>& tiles)
-{
-    const std::array<int, 34> counts = TileCounts(tiles);
-    return std::min({ StandardShanten(counts), SevenPairsShanten(counts), KokushiShanten(counts) });
-}
-
 void UpdateInvalidTileSelection()
 {
     g_invalidTileSelection = false;
     if (g_selectedTile < g_hand.size()) {
-        g_invalidTileSelection = CountTile(g_hand, g_hand[g_selectedTile]) > 4;
+        g_invalidTileSelection = mahjong::CountTile(g_hand, g_hand[g_selectedTile]) > 4;
     }
 }
 
@@ -408,113 +253,19 @@ void UpdateWinningCandidates()
         return;
     }
 
-    std::vector<mahjong::Tile> baseHand(g_hand.begin(), g_hand.end() - 1);
-    for (const mahjong::Tile& candidate : AllTileKinds()) {
-        if (CountTile(baseHand, candidate) >= 4) {
-            continue;
-        }
-
-        std::vector<mahjong::Tile> testHand = baseHand;
-        testHand.push_back(candidate);
-
-        mahjong::HandContext candidateContext = g_context;
-        candidateContext.winningTile = candidate;
-
-        try {
-            const mahjong::YakuResult result = mahjong::EvaluateYaku(testHand, candidateContext);
-            if (result.validWinningShape) {
-                g_winningCandidates.push_back(candidate);
-            }
-        }
-        catch (...) {
-        }
-    }
+    g_winningCandidates = mahjong::FindWinningCandidates(g_hand, g_context);
 
     LoadWinningCandidateImages();
 }
 
-void AddDisplayYakuName(std::vector<std::string>& names, const mahjong::Yaku& yaku)
-{
-    if (yaku.name == u8"立直") {
-        return;
-    }
-    if (std::find(names.begin(), names.end(), yaku.name) != names.end()) {
-        return;
-    }
-
-    names.push_back(yaku.name);
-}
-
-void AddYakuResultNames(std::vector<std::string>& names, const mahjong::YakuResult& result)
-{
-    for (const mahjong::Yaku& yaku : result.yaku) {
-        AddDisplayYakuName(names, yaku);
-    }
-}
-
 std::vector<std::wstring> CollectDisplayYakuNames()
 {
-    std::vector<std::string> names;
-
-    mahjong::YakuResult currentResult;
-    bool hasCurrentResult = false;
-
-    try {
-        mahjong::HandContext currentContext = g_context;
-        if (!g_hand.empty()) {
-            currentContext.winningTile = g_hand.back();
-        }
-
-        currentResult = mahjong::EvaluateYaku(g_hand, currentContext);
-        hasCurrentResult = true;
-        if (currentResult.validWinningShape) {
-            AddYakuResultNames(names, currentResult);
-        }
-    }
-    catch (...) {
-    }
-
-    if (hasCurrentResult && currentResult.validWinningShape) {
-        std::vector<std::wstring> wideNames;
-        wideNames.reserve(names.size());
-        for (const std::string& name : names) {
-            wideNames.push_back(Utf8ToWide(name));
-        }
-        return wideNames;
-    }
-
-    if (g_context.isRiichi && g_hand.size() == 14) {
-        const std::vector<mahjong::Tile> baseHand(g_hand.begin(), g_hand.end() - 1);
-        for (const mahjong::Tile& candidate : g_winningCandidates) {
-            std::vector<mahjong::Tile> testHand = baseHand;
-            testHand.push_back(candidate);
-
-            mahjong::HandContext candidateContext = g_context;
-            candidateContext.winningTile = candidate;
-
-            try {
-                AddYakuResultNames(names, mahjong::EvaluateYaku(testHand, candidateContext));
-            }
-            catch (...) {
-            }
-        }
-    }
-
-    try {
-        mahjong::HandContext currentContext = g_context;
-        if (!g_hand.empty()) {
-            currentContext.winningTile = g_hand.back();
-        }
-
-        AddYakuResultNames(names, mahjong::EvaluateCurrentYaku(g_hand, currentContext));
-    }
-    catch (...) {
-    }
+    const std::vector<mahjong::Yaku> yaku = mahjong::EvaluateDisplayYaku(g_hand, g_context, g_winningCandidates);
 
     std::vector<std::wstring> wideNames;
-    wideNames.reserve(names.size());
-    for (const std::string& name : names) {
-        wideNames.push_back(Utf8ToWide(name));
+    wideNames.reserve(yaku.size());
+    for (const mahjong::Yaku& item : yaku) {
+        wideNames.push_back(Utf8ToWide(item.name));
     }
     return wideNames;
 }
