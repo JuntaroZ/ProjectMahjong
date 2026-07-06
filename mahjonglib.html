@@ -1,0 +1,598 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MahjongLib 仕様書</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f8f5;
+      --paper: #ffffff;
+      --ink: #18231d;
+      --muted: #607067;
+      --line: #d9e2dc;
+      --accent: #1f7a4d;
+      --accent-dark: #155a39;
+      --code-bg: #eef4f0;
+      --table-head: #edf6f1;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "Yu Gothic UI", "Meiryo", system-ui, sans-serif;
+      line-height: 1.72;
+    }
+
+    header {
+      background: #1f5f43;
+      color: #fff;
+      padding: 36px 28px;
+    }
+
+    header h1 {
+      margin: 0 0 8px;
+      font-size: 32px;
+      font-weight: 700;
+    }
+
+    header p {
+      margin: 0;
+      color: #e5f1eb;
+    }
+
+    main {
+      width: min(1120px, calc(100% - 32px));
+      margin: 24px auto 56px;
+      display: grid;
+      grid-template-columns: 260px minmax(0, 1fr);
+      gap: 24px;
+      align-items: start;
+    }
+
+    nav {
+      position: sticky;
+      top: 16px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      padding: 18px;
+    }
+
+    nav h2 {
+      margin: 0 0 10px;
+      font-size: 16px;
+    }
+
+    nav a {
+      display: block;
+      color: var(--accent-dark);
+      text-decoration: none;
+      padding: 4px 0;
+      font-size: 14px;
+    }
+
+    nav a:hover {
+      text-decoration: underline;
+    }
+
+    article {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      padding: 28px;
+    }
+
+    section {
+      margin: 0 0 34px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    section:last-child {
+      border-bottom: 0;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    h2 {
+      margin: 0 0 14px;
+      font-size: 24px;
+      color: var(--accent-dark);
+    }
+
+    h3 {
+      margin: 22px 0 10px;
+      font-size: 19px;
+      color: #24382d;
+    }
+
+    p {
+      margin: 0 0 12px;
+    }
+
+    ul {
+      margin: 8px 0 14px 24px;
+      padding: 0;
+    }
+
+    li {
+      margin: 4px 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 18px;
+      font-size: 14px;
+    }
+
+    th,
+    td {
+      border: 1px solid var(--line);
+      padding: 8px 10px;
+      vertical-align: top;
+      text-align: left;
+    }
+
+    th {
+      background: var(--table-head);
+      color: #1d3d2c;
+      font-weight: 700;
+    }
+
+    code {
+      font-family: Consolas, "Cascadia Mono", monospace;
+      background: var(--code-bg);
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-size: 0.94em;
+    }
+
+    pre {
+      background: #12251b;
+      color: #edf8f1;
+      padding: 16px;
+      overflow-x: auto;
+      border-radius: 6px;
+      line-height: 1.55;
+    }
+
+    pre code {
+      background: transparent;
+      padding: 0;
+      color: inherit;
+    }
+
+    .note {
+      border-left: 4px solid var(--accent);
+      background: #f0f7f3;
+      padding: 12px 14px;
+      margin: 14px 0;
+      color: #254233;
+    }
+
+    @media (max-width: 860px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+
+      nav {
+        position: static;
+      }
+
+      article {
+        padding: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>MahjongLib 仕様書</h1>
+    <p>手牌解析、和了形判定、役判定、シャンテン計算、和了候補探索、表示用点数計算の仕様</p>
+  </header>
+
+  <main>
+    <nav aria-label="目次">
+      <h2>目次</h2>
+      <a href="#overview">概要</a>
+      <a href="#files">対象ファイル</a>
+      <a href="#tile">牌表現</a>
+      <a href="#factory">牌生成 API</a>
+      <a href="#context">和了条件</a>
+      <a href="#types">役関連の型</a>
+      <a href="#view-analysis">手牌表示向け解析結果</a>
+      <a href="#api">公開 API</a>
+      <a href="#yaku">対応役</a>
+      <a href="#pinfu">平和の待ち判定</a>
+      <a href="#sanankou">三暗刻のロン判定</a>
+      <a href="#internal">内部解析仕様</a>
+      <a href="#limits">制限事項</a>
+      <a href="#sample">使用例</a>
+    </nav>
+
+    <article>
+      <section id="overview">
+        <h2>概要</h2>
+        <p>MahjongLib は、麻雀の手牌解析、和了形判定、役判定、シャンテン計算、和了候補探索、表示用点数計算を行う C++17 ライブラリです。</p>
+        <p>本ライブラリは <code>mahjong</code> 名前空間に公開 API を持ち、画面表示や入力操作に依存しません。Win32 / GDI+ を使用する画面処理は <code>ProjectMahjong.cpp</code> 側の責務です。</p>
+      </section>
+
+      <section id="files">
+        <h2>対象ファイル</h2>
+        <table>
+          <thead><tr><th>ファイル</th><th>役割</th></tr></thead>
+          <tbody>
+            <tr><td><code>MahjongYaku.h</code></td><td>外部公開 API、牌、手牌条件、役、解析結果の型定義。</td></tr>
+            <tr><td><code>MahjongYaku.cpp</code></td><td>役判定 API、シャンテン計算、和了候補探索、表示用役一覧生成、表示用点数計算。</td></tr>
+            <tr><td><code>MahjongHandAnalysis.h/.cpp</code></td><td>手牌の内部解析、面子分解、七対子、国士無双の形判定。</td></tr>
+            <tr><td><code>YakuRules</code></td><td>役ごとの判定クラス、役名、翻数、役満設定。</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="tile">
+        <h2>牌表現</h2>
+        <h3>Suit</h3>
+        <pre><code>enum class Suit {
+    Man,
+    Pin,
+    Sou,
+    Honor
+};</code></pre>
+        <table>
+          <thead><tr><th>値</th><th>意味</th></tr></thead>
+          <tbody>
+            <tr><td><code>Man</code></td><td>萬子</td></tr>
+            <tr><td><code>Pin</code></td><td>筒子</td></tr>
+            <tr><td><code>Sou</code></td><td>索子</td></tr>
+            <tr><td><code>Honor</code></td><td>字牌</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Tile</h3>
+        <pre><code>struct Tile {
+    Suit suit;
+    int rank;
+};</code></pre>
+        <table>
+          <thead><tr><th>種類</th><th>rank の範囲</th></tr></thead>
+          <tbody>
+            <tr><td>萬子</td><td>1 - 9</td></tr>
+            <tr><td>筒子</td><td>1 - 9</td></tr>
+            <tr><td>索子</td><td>1 - 9</td></tr>
+            <tr><td>字牌</td><td>1 - 7</td></tr>
+          </tbody>
+        </table>
+        <table>
+          <thead><tr><th>字牌 rank</th><th>牌</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>東</td></tr>
+            <tr><td>2</td><td>南</td></tr>
+            <tr><td>3</td><td>西</td></tr>
+            <tr><td>4</td><td>北</td></tr>
+            <tr><td>5</td><td>白</td></tr>
+            <tr><td>6</td><td>發</td></tr>
+            <tr><td>7</td><td>中</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="factory">
+        <h2>牌生成 API</h2>
+        <pre><code>Tile Man(int rank);
+Tile Pin(int rank);
+Tile Sou(int rank);
+Tile Honor(int rank);</code></pre>
+        <pre><code>std::vector&lt;mahjong::Tile&gt; hand = {
+    mahjong::Man(1), mahjong::Man(2), mahjong::Man(3),
+    mahjong::Pin(1), mahjong::Pin(2), mahjong::Pin(3),
+    mahjong::Sou(1), mahjong::Sou(2), mahjong::Sou(3),
+    mahjong::Man(7), mahjong::Man(8), mahjong::Man(9),
+    mahjong::Honor(1), mahjong::Honor(1)
+};</code></pre>
+      </section>
+
+      <section id="context">
+        <h2>和了条件</h2>
+        <h3>Wind</h3>
+        <pre><code>enum class Wind {
+    East = 1,
+    South = 2,
+    West = 3,
+    North = 4
+};</code></pre>
+
+        <h3>HandContext</h3>
+        <pre><code>struct HandContext {
+    Tile winningTile;
+    Wind seatWind;
+    Wind roundWind;
+    bool isClosed;
+    bool isTsumo;
+    bool isRiichi;
+    bool isIppatsu;
+    bool isRinshan;
+    bool isChankan;
+    bool isHaitei;
+    bool isHoutei;
+    bool isTenho;
+    bool isChiho;
+};</code></pre>
+        <table>
+          <thead><tr><th>フィールド</th><th>意味</th></tr></thead>
+          <tbody>
+            <tr><td><code>winningTile</code></td><td>和了牌。平和の待ち判定、三暗刻のロン判定などで使用します。</td></tr>
+            <tr><td><code>seatWind</code></td><td>自風。役牌、平和の雀頭判定で使用します。</td></tr>
+            <tr><td><code>roundWind</code></td><td>場風。役牌、平和の雀頭判定で使用します。</td></tr>
+            <tr><td><code>isClosed</code></td><td>門前かどうか。</td></tr>
+            <tr><td><code>isTsumo</code></td><td>ツモ和了かどうか。</td></tr>
+            <tr><td><code>isRiichi</code></td><td>立直状態かどうか。</td></tr>
+            <tr><td><code>isIppatsu</code></td><td>一発かどうか。<code>isRiichi</code> と併用します。</td></tr>
+            <tr><td><code>isRinshan</code></td><td>嶺上開花かどうか。</td></tr>
+            <tr><td><code>isChankan</code></td><td>槍槓かどうか。</td></tr>
+            <tr><td><code>isHaitei</code></td><td>海底撈月かどうか。</td></tr>
+            <tr><td><code>isHoutei</code></td><td>河底撈魚かどうか。</td></tr>
+            <tr><td><code>isTenho</code></td><td>天和かどうか。</td></tr>
+            <tr><td><code>isChiho</code></td><td>地和かどうか。</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="types">
+        <h2>役関連の型</h2>
+        <h3>Yaku</h3>
+        <pre><code>struct Yaku {
+    std::string name;
+    int han;
+    bool yakuman;
+};</code></pre>
+        <h3>YakuResult</h3>
+        <pre><code>struct YakuResult {
+    bool validWinningShape;
+    std::vector&lt;Yaku&gt; yaku;
+};</code></pre>
+        <h3>YakuScore</h3>
+        <pre><code>struct YakuScore {
+    Yaku yaku;
+    int points;
+    std::string text;
+};</code></pre>
+      </section>
+
+      <section id="view-analysis">
+        <h2>手牌表示向け解析結果</h2>
+        <pre><code>struct HandViewAnalysis {
+    bool invalidTileCount;
+    bool winning;
+    bool ready;
+    bool riichiOnlyWin;
+    int shanten;
+    std::vector&lt;Yaku&gt; yaku;
+    std::vector&lt;Tile&gt; winningCandidates;
+};</code></pre>
+        <table>
+          <thead><tr><th>フィールド</th><th>意味</th></tr></thead>
+          <tbody>
+            <tr><td><code>invalidTileCount</code></td><td>同じ牌が5枚以上ある場合 <code>true</code>。</td></tr>
+            <tr><td><code>winning</code></td><td>現在の14牌が和了形の場合 <code>true</code>。</td></tr>
+            <tr><td><code>ready</code></td><td>和了候補が存在する場合 <code>true</code>。</td></tr>
+            <tr><td><code>riichiOnlyWin</code></td><td>和了形だが表示対象役が無い場合 <code>true</code>。</td></tr>
+            <tr><td><code>shanten</code></td><td>シャンテン数。和了形は負数になります。</td></tr>
+            <tr><td><code>yaku</code></td><td>表示用成立役一覧。</td></tr>
+            <tr><td><code>winningCandidates</code></td><td>和了候補牌一覧。</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="api">
+        <h2>公開 API</h2>
+        <h3>EvaluateYaku</h3>
+        <pre><code>YakuResult EvaluateYaku(const std::vector&lt;Tile&gt;&amp; closedTiles, const HandContext&amp; context);</code></pre>
+        <ul>
+          <li>14牌の和了形判定と役判定を行います。</li>
+          <li>14牌以外の場合は <code>std::invalid_argument</code> を送出します。</li>
+          <li>役満が成立した場合、通常役は評価結果に含めません。</li>
+          <li>通常役は、複数の面子分解候補の中から合計翻数が最大になるものを採用します。</li>
+        </ul>
+
+        <h3>EvaluateCurrentYaku</h3>
+        <pre><code>YakuResult EvaluateCurrentYaku(const std::vector&lt;Tile&gt;&amp; closedTiles, const HandContext&amp; context);</code></pre>
+        <p>現在の14牌に対して、和了形でなくても成立し得る表示用役を評価します。</p>
+
+        <h3>CalculateShanten</h3>
+        <pre><code>int CalculateShanten(const std::vector&lt;Tile&gt;&amp; tiles);</code></pre>
+        <p>通常形、七対子、国士無双のシャンテン数を計算し、最小値を返します。</p>
+
+        <h3>FindWinningCandidates</h3>
+        <pre><code>std::vector&lt;Tile&gt; FindWinningCandidates(const std::vector&lt;Tile&gt;&amp; hand, const HandContext&amp; context);</code></pre>
+        <ul>
+          <li>14牌の最後の1牌をツモ／ロン牌として扱い、残り13牌に対する和了候補を列挙します。</li>
+          <li>すでに4枚使われている牌は候補に含めません。</li>
+          <li><code>EvaluateYaku</code> で和了形になる牌を候補として返します。</li>
+        </ul>
+
+        <h3>EvaluateDisplayYaku</h3>
+        <pre><code>std::vector&lt;Yaku&gt; EvaluateDisplayYaku(
+    const std::vector&lt;Tile&gt;&amp; hand,
+    const HandContext&amp; context,
+    const std::vector&lt;Tile&gt;&amp; winningCandidates);</code></pre>
+        <ul>
+          <li>画面表示向けの役一覧を生成します。</li>
+          <li>現在の14牌が和了形の場合、その和了形の役を返します。</li>
+          <li>表示用役一覧から <code>立直</code> は除外します。</li>
+          <li>同じ役名は重複して追加しません。</li>
+        </ul>
+
+        <h3>CalculateDisplayYakuScores</h3>
+        <pre><code>std::vector&lt;YakuScore&gt; CalculateDisplayYakuScores(
+    const std::vector&lt;Yaku&gt;&amp; yaku,
+    const HandContext&amp; context);</code></pre>
+        <p>表示用の点数文字列を生成します。表示は <code>翻数 / 点数</code> 形式です。</p>
+        <div class="note">現在の点数は、簡易符を使った子ロン相当の表示点です。親、子、ロン、ツモなどの支払い表記は表示しません。</div>
+        <table>
+          <thead><tr><th>条件</th><th>符</th></tr></thead>
+          <tbody>
+            <tr><td>七対子</td><td>25符</td></tr>
+            <tr><td>平和ツモ</td><td>20符</td></tr>
+            <tr><td>その他</td><td>30符</td></tr>
+          </tbody>
+        </table>
+        <table>
+          <thead><tr><th>条件</th><th>点数</th></tr></thead>
+          <tbody>
+            <tr><td>満貫</td><td>8000点</td></tr>
+            <tr><td>跳満</td><td>12000点</td></tr>
+            <tr><td>倍満</td><td>16000点</td></tr>
+            <tr><td>三倍満</td><td>24000点</td></tr>
+            <tr><td>役満</td><td>32000点</td></tr>
+          </tbody>
+        </table>
+
+        <h3>AnalyzeHandView</h3>
+        <pre><code>HandViewAnalysis AnalyzeHandView(
+    const std::vector&lt;Tile&gt;&amp; hand,
+    const HandContext&amp; context);</code></pre>
+        <p>手牌画面用の総合解析を行います。同一牌5枚以上の検出、シャンテン計算、和了形判定、和了候補探索、表示用役一覧生成をまとめて行います。</p>
+
+        <h3>その他</h3>
+        <table>
+          <thead><tr><th>API</th><th>内容</th></tr></thead>
+          <tbody>
+            <tr><td><code>AllTileKinds()</code></td><td>34種類すべての牌を返します。</td></tr>
+            <tr><td><code>CountTile()</code></td><td>指定した牌が何枚あるかを返します。</td></tr>
+            <tr><td><code>HasInvalidTileCount()</code></td><td>同一牌が5枚以上ある場合 <code>true</code> を返します。</td></tr>
+            <tr><td><code>TileToString()</code></td><td>牌を <code>1m</code>、<code>9p</code>、<code>5s</code>、<code>7z</code> のような文字列に変換します。</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="yaku">
+        <h2>対応役</h2>
+        <h3>役満</h3>
+        <table>
+          <thead><tr><th>役名</th><th>翻数</th><th>条件</th></tr></thead>
+          <tbody>
+            <tr><td>天和</td><td>13</td><td><code>context.isTenho == true</code></td></tr>
+            <tr><td>地和</td><td>13</td><td><code>context.isChiho == true</code></td></tr>
+            <tr><td>国士無双</td><td>13</td><td>国士無双形</td></tr>
+          </tbody>
+        </table>
+
+        <h3>通常役</h3>
+        <table>
+          <thead><tr><th>役名</th><th>翻数</th><th>主な条件</th></tr></thead>
+          <tbody>
+            <tr><td>立直</td><td>1</td><td><code>isRiichi &amp;&amp; isClosed</code></td></tr>
+            <tr><td>一発</td><td>1</td><td><code>isIppatsu &amp;&amp; isRiichi</code></td></tr>
+            <tr><td>門前清自摸和</td><td>1</td><td><code>isTsumo &amp;&amp; isClosed</code></td></tr>
+            <tr><td>嶺上開花</td><td>1</td><td><code>isRinshan</code></td></tr>
+            <tr><td>槍槓</td><td>1</td><td><code>isChankan</code></td></tr>
+            <tr><td>海底撈月</td><td>1</td><td><code>isHaitei</code></td></tr>
+            <tr><td>河底撈魚</td><td>1</td><td><code>isHoutei</code></td></tr>
+            <tr><td>断么九</td><td>1</td><td>么九牌を含まない</td></tr>
+            <tr><td>平和</td><td>1</td><td>門前、全順子、役牌雀頭なし、両面待ち</td></tr>
+            <tr><td>一盃口</td><td>1</td><td>門前、同一順子2組</td></tr>
+            <tr><td>役牌</td><td>1</td><td>三元牌、自風、場風の刻子</td></tr>
+            <tr><td>対々和</td><td>2</td><td>全刻子</td></tr>
+            <tr><td>三暗刻</td><td>2</td><td>暗刻3組</td></tr>
+            <tr><td>七対子</td><td>2</td><td>七対子形</td></tr>
+            <tr><td>三色同順</td><td>門前2 / 鳴き1</td><td>萬子、筒子、索子で同じ数字の順子</td></tr>
+            <tr><td>一気通貫</td><td>門前2 / 鳴き1</td><td>同一色で 123、456、789</td></tr>
+            <tr><td>混一色</td><td>門前3 / 鳴き2</td><td>1色 + 字牌</td></tr>
+            <tr><td>清一色</td><td>門前6 / 鳴き5</td><td>1色のみ</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="pinfu">
+        <h2>平和の待ち判定</h2>
+        <p>平和は以下の場合に成立しません。</p>
+        <ul>
+          <li>待ちが雀頭の場合</li>
+          <li>嵌張待ちの場合</li>
+          <li>辺張待ちの場合</li>
+          <li>雀頭が三元牌、自風、場風の場合</li>
+          <li>門前でない場合</li>
+        </ul>
+        <p>現在の実装では <code>context.winningTile</code> を使用して両面待ちかどうかを判定します。</p>
+      </section>
+
+      <section id="sanankou">
+        <h2>三暗刻のロン判定</h2>
+        <ul>
+          <li>ツモの場合、刻子は暗刻として扱います。</li>
+          <li>ロンの場合、和了牌で完成した刻子は明刻扱いとして暗刻数から除外します。</li>
+        </ul>
+      </section>
+
+      <section id="internal">
+        <h2>内部解析仕様</h2>
+        <table>
+          <thead><tr><th>インデックス範囲</th><th>牌</th></tr></thead>
+          <tbody>
+            <tr><td>0 - 8</td><td>萬子</td></tr>
+            <tr><td>9 - 17</td><td>筒子</td></tr>
+            <tr><td>18 - 26</td><td>索子</td></tr>
+            <tr><td>27 - 33</td><td>字牌</td></tr>
+          </tbody>
+        </table>
+        <p><code>AnalyzeHand</code> は、牌カウント、通常形の全分解候補、七対子形、国士無双形を解析します。同一牌が5枚以上ある場合は <code>std::invalid_argument</code> を送出します。</p>
+      </section>
+
+      <section id="limits">
+        <h2>制限事項</h2>
+        <ul>
+          <li>現在の公開 API は基本的に閉じた手牌ベースです。</li>
+          <li>鳴き面子を外部から明示的に渡す API はありません。</li>
+          <li>ドラ、赤ドラ、裏ドラ、場棒、本場は未対応です。</li>
+          <li>点数計算の符は簡易仕様です。</li>
+          <li>ダブル役満、数え役満の細かい扱いは未整備です。</li>
+          <li>役判定は現在実装済みの役に限定されます。</li>
+        </ul>
+      </section>
+
+      <section id="sample">
+        <h2>使用例</h2>
+        <pre><code>#include "MahjongYaku.h"
+
+#include &lt;iostream&gt;
+#include &lt;vector&gt;
+
+int main()
+{
+    using namespace mahjong;
+
+    std::vector&lt;Tile&gt; hand = {
+        Man(1), Man(2), Man(3),
+        Pin(1), Pin(2), Pin(3),
+        Sou(1), Sou(2), Sou(3),
+        Man(7), Man(8), Man(9),
+        Honor(1), Honor(1)
+    };
+
+    HandContext context;
+    context.winningTile = hand.back();
+    context.seatWind = Wind::East;
+    context.roundWind = Wind::East;
+    context.isClosed = true;
+    context.isTsumo = false;
+
+    YakuResult result = EvaluateYaku(hand, context);
+    if (result.validWinningShape) {
+        std::vector&lt;YakuScore&gt; scores = CalculateDisplayYakuScores(result.yaku, context);
+        for (const YakuScore&amp; score : scores) {
+            std::cout &lt;&lt; score.yaku.name &lt;&lt; " " &lt;&lt; score.text &lt;&lt; "\n";
+        }
+    }
+}</code></pre>
+      </section>
+    </article>
+  </main>
+</body>
+</html>
