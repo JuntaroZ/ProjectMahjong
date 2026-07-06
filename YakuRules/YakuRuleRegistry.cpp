@@ -8,6 +8,14 @@ std::vector<std::unique_ptr<YakuRule>> CreateYakumanRules()
     rules.push_back(std::make_unique<TenhoRule>());
     rules.push_back(std::make_unique<ChihoRule>());
     rules.push_back(std::make_unique<KokushiRule>());
+    rules.push_back(std::make_unique<SuuankouRule>());
+    rules.push_back(std::make_unique<DaisangenRule>());
+    rules.push_back(std::make_unique<ShousuushiiRule>());
+    rules.push_back(std::make_unique<DaisuushiiRule>());
+    rules.push_back(std::make_unique<TsuuiisouRule>());
+    rules.push_back(std::make_unique<RyuuiisouRule>());
+    rules.push_back(std::make_unique<ChinroutouRule>());
+    rules.push_back(std::make_unique<ChuurenPoutouRule>());
     return rules;
 }
 
@@ -29,7 +37,13 @@ std::vector<std::unique_ptr<YakuRule>> CreateRegularRules()
     rules.push_back(std::make_unique<SanankouRule>());
     rules.push_back(std::make_unique<ChiitoitsuRule>());
     rules.push_back(std::make_unique<SanshokuDoujunRule>());
+    rules.push_back(std::make_unique<SanshokuDoukouRule>());
     rules.push_back(std::make_unique<IttsuRule>());
+    rules.push_back(std::make_unique<ChantaRule>());
+    rules.push_back(std::make_unique<JunchanRule>());
+    rules.push_back(std::make_unique<RyanpeikouRule>());
+    rules.push_back(std::make_unique<ShousangenRule>());
+    rules.push_back(std::make_unique<HonroutouRule>());
     rules.push_back(std::make_unique<HonitsuRule>());
     rules.push_back(std::make_unique<ChinitsuRule>());
     return rules;

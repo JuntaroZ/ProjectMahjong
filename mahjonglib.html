@@ -481,6 +481,14 @@ Tile Honor(int rank);</code></pre>
             <tr><td>天和</td><td>13</td><td><code>context.isTenho == true</code></td></tr>
             <tr><td>地和</td><td>13</td><td><code>context.isChiho == true</code></td></tr>
             <tr><td>国士無双</td><td>13</td><td>国士無双形</td></tr>
+            <tr><td>四暗刻</td><td>13</td><td>暗刻4組。ロンで和了牌が刻子を完成させる場合は不成立。</td></tr>
+            <tr><td>大三元</td><td>13</td><td>三元牌3種類すべての刻子</td></tr>
+            <tr><td>小四喜</td><td>13</td><td>風牌3種類の刻子 + 風牌の雀頭</td></tr>
+            <tr><td>大四喜</td><td>13</td><td>風牌4種類すべての刻子</td></tr>
+            <tr><td>字一色</td><td>13</td><td>字牌のみ</td></tr>
+            <tr><td>緑一色</td><td>13</td><td>2索、3索、4索、6索、8索、發のみ</td></tr>
+            <tr><td>清老頭</td><td>13</td><td>老頭牌のみ</td></tr>
+            <tr><td>九蓮宝燈</td><td>13</td><td>門前、同一色で 1112345678999 + 同色1牌</td></tr>
           </tbody>
         </table>
 
@@ -503,7 +511,13 @@ Tile Honor(int rank);</code></pre>
             <tr><td>三暗刻</td><td>2</td><td>暗刻3組</td></tr>
             <tr><td>七対子</td><td>2</td><td>七対子形</td></tr>
             <tr><td>三色同順</td><td>門前2 / 鳴き1</td><td>萬子、筒子、索子で同じ数字の順子</td></tr>
+            <tr><td>三色同刻</td><td>2</td><td>萬子、筒子、索子で同じ数字の刻子</td></tr>
             <tr><td>一気通貫</td><td>門前2 / 鳴き1</td><td>同一色で 123、456、789</td></tr>
+            <tr><td>混全帯么九</td><td>門前2 / 鳴き1</td><td>全面子と雀頭に么九牌を含み、字牌と順子を含む</td></tr>
+            <tr><td>純全帯么九</td><td>門前3 / 鳴き2</td><td>全面子と雀頭に老頭牌を含み、順子を含む</td></tr>
+            <tr><td>二盃口</td><td>3</td><td>門前、同一順子2組が2セット</td></tr>
+            <tr><td>小三元</td><td>2</td><td>三元牌2種類の刻子 + 三元牌の雀頭</td></tr>
+            <tr><td>混老頭</td><td>2</td><td>么九牌のみ</td></tr>
             <tr><td>混一色</td><td>門前3 / 鳴き2</td><td>1色 + 字牌</td></tr>
             <tr><td>清一色</td><td>門前6 / 鳴き5</td><td>1色のみ</td></tr>
           </tbody>
@@ -553,6 +567,8 @@ Tile Honor(int rank);</code></pre>
           <li>ドラ、赤ドラ、裏ドラ、場棒、本場は未対応です。</li>
           <li>点数計算の符は簡易仕様です。</li>
           <li>ダブル役満、数え役満の細かい扱いは未整備です。</li>
+          <li>四槓子は槓情報を保持するデータ構造がないため未対応です。</li>
+          <li>流し満貫、人和など、局進行情報が必要な役は未対応です。</li>
           <li>役判定は現在実装済みの役に限定されます。</li>
         </ul>
       </section>

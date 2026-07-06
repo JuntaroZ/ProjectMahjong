@@ -111,6 +111,76 @@ public:
     void Evaluate(const HandAnalysis&, const Decomposition*, const HandContext&, std::vector<Yaku>&) const override;
 };
 
+class SuuankouRule final : public YakuRule {
+public:
+    void Evaluate(const HandAnalysis&, const Decomposition*, const HandContext&, std::vector<Yaku>&) const override;
+};
+
+class DaisangenRule final : public YakuRule {
+public:
+    void Evaluate(const HandAnalysis&, const Decomposition*, const HandContext&, std::vector<Yaku>&) const override;
+};
+
+class ShousuushiiRule final : public YakuRule {
+public:
+    void Evaluate(const HandAnalysis&, const Decomposition*, const HandContext&, std::vector<Yaku>&) const override;
+};
+
+class DaisuushiiRule final : public YakuRule {
+public:
+    void Evaluate(const HandAnalysis&, const Decomposition*, const HandContext&, std::vector<Yaku>&) const override;
+};
+
+class TsuuiisouRule final : public YakuRule {
+public:
+    void Evaluate(const HandAnalysis&, const Decomposition*, const HandContext&, std::vector<Yaku>&) const override;
+};
+
+class RyuuiisouRule final : public YakuRule {
+public:
+    void Evaluate(const HandAnalysis&, const Decomposition*, const HandContext&, std::vector<Yaku>&) const override;
+};
+
+class ChinroutouRule final : public YakuRule {
+public:
+    void Evaluate(const HandAnalysis&, const Decomposition*, const HandContext&, std::vector<Yaku>&) const override;
+};
+
+class ChuurenPoutouRule final : public YakuRule {
+public:
+    void Evaluate(const HandAnalysis&, const Decomposition*, const HandContext&, std::vector<Yaku>&) const override;
+};
+
+class SanshokuDoukouRule final : public YakuRule {
+public:
+    void Evaluate(const HandAnalysis&, const Decomposition*, const HandContext&, std::vector<Yaku>&) const override;
+};
+
+class ChantaRule final : public YakuRule {
+public:
+    void Evaluate(const HandAnalysis&, const Decomposition*, const HandContext&, std::vector<Yaku>&) const override;
+};
+
+class JunchanRule final : public YakuRule {
+public:
+    void Evaluate(const HandAnalysis&, const Decomposition*, const HandContext&, std::vector<Yaku>&) const override;
+};
+
+class RyanpeikouRule final : public YakuRule {
+public:
+    void Evaluate(const HandAnalysis&, const Decomposition*, const HandContext&, std::vector<Yaku>&) const override;
+};
+
+class ShousangenRule final : public YakuRule {
+public:
+    void Evaluate(const HandAnalysis&, const Decomposition*, const HandContext&, std::vector<Yaku>&) const override;
+};
+
+class HonroutouRule final : public YakuRule {
+public:
+    void Evaluate(const HandAnalysis&, const Decomposition*, const HandContext&, std::vector<Yaku>&) const override;
+};
+
 std::vector<std::unique_ptr<YakuRule>> CreateYakumanRules();
 std::vector<std::unique_ptr<YakuRule>> CreateRegularRules();
 std::vector<Yaku> EvaluateRules(

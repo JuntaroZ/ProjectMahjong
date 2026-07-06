@@ -152,6 +152,23 @@ void AddYakuResultNames(std::vector<Yaku>& yaku, const YakuResult& result)
     }
 }
 
+void AddUniqueYaku(std::vector<Yaku>& yaku, const Yaku& item)
+{
+    const auto existing = std::find_if(yaku.begin(), yaku.end(), [&item](const Yaku& current) {
+        return current.name == item.name;
+    });
+    if (existing == yaku.end()) {
+        yaku.push_back(item);
+    }
+}
+
+void AddUniqueYakuResults(std::vector<Yaku>& yaku, const std::vector<Yaku>& items)
+{
+    for (const Yaku& item : items) {
+        AddUniqueYaku(yaku, item);
+    }
+}
+
 int RoundUp100(int value)
 {
     return ((value + 99) / 100) * 100;
@@ -258,7 +275,10 @@ YakuResult EvaluateYaku(const std::vector<Tile>& closedTiles, const HandContext&
     }
 
     const std::vector<std::unique_ptr<YakuRule>> yakumanRules = CreateYakumanRules();
-    result.yaku = EvaluateRules(yakumanRules, analysis, nullptr, context);
+    AddUniqueYakuResults(result.yaku, EvaluateRules(yakumanRules, analysis, nullptr, context));
+    for (const Decomposition& hand : analysis.standardHands) {
+        AddUniqueYakuResults(result.yaku, EvaluateRules(yakumanRules, analysis, &hand, context));
+    }
     if (!result.yaku.empty()) {
         return result;
     }
@@ -294,7 +314,10 @@ YakuResult EvaluateCurrentYaku(const std::vector<Tile>& closedTiles, const HandC
     result.validWinningShape = !analysis.standardHands.empty() || analysis.sevenPairs || analysis.kokushi;
 
     const std::vector<std::unique_ptr<YakuRule>> yakumanRules = CreateYakumanRules();
-    result.yaku = EvaluateRules(yakumanRules, analysis, nullptr, context);
+    AddUniqueYakuResults(result.yaku, EvaluateRules(yakumanRules, analysis, nullptr, context));
+    for (const Decomposition& hand : analysis.standardHands) {
+        AddUniqueYakuResults(result.yaku, EvaluateRules(yakumanRules, analysis, &hand, context));
+    }
     if (!result.yaku.empty()) {
         return result;
     }

@@ -16,7 +16,10 @@ void IipeikouRule::Evaluate(const HandAnalysis&, const Decomposition* hand, cons
         }
     }
 
-    if (std::any_of(sequenceCounts.begin(), sequenceCounts.end(), [](int count) { return count >= 2; })) {
+    const int duplicateSequences = static_cast<int>(std::count_if(sequenceCounts.begin(), sequenceCounts.end(), [](int count) {
+        return count >= 2;
+    }));
+    if (duplicateSequences == 1) {
         Add(yaku, IipeikouName, 1);
     }
 }

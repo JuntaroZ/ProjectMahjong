@@ -136,15 +136,22 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="YakuRules\ChankanRule.cpp" />
+    <ClCompile Include="YakuRules\ChantaRule.cpp" />
     <ClCompile Include="YakuRules\ChihoRule.cpp" />
     <ClCompile Include="YakuRules\ChiitoitsuRule.cpp" />
     <ClCompile Include="YakuRules\ChinitsuRule.cpp" />
+    <ClCompile Include="YakuRules\ChinroutouRule.cpp" />
+    <ClCompile Include="YakuRules\ChuurenPoutouRule.cpp" />
+    <ClCompile Include="YakuRules\DaisangenRule.cpp" />
+    <ClCompile Include="YakuRules\DaisuushiiRule.cpp" />
     <ClCompile Include="YakuRules\HaiteiRule.cpp" />
+    <ClCompile Include="YakuRules\HonroutouRule.cpp" />
     <ClCompile Include="YakuRules\HonitsuRule.cpp" />
     <ClCompile Include="YakuRules\HouteiRule.cpp" />
     <ClCompile Include="YakuRules\IipeikouRule.cpp" />
     <ClCompile Include="YakuRules\IppatsuRule.cpp" />
     <ClCompile Include="YakuRules\IttsuRule.cpp" />
+    <ClCompile Include="YakuRules\JunchanRule.cpp" />
     <ClCompile Include="YakuRules\KokushiRule.cpp" />
     <ClCompile Include="MahjongHandAnalysis.cpp" />
     <ClCompile Include="MahjongYaku.cpp" />
@@ -155,9 +162,16 @@
     <ClCompile Include="YakuRules\RinshanRule.cpp" />
     <ClCompile Include="YakuRules\SanankouRule.cpp" />
     <ClCompile Include="YakuRules\SanshokuDoujunRule.cpp" />
+    <ClCompile Include="YakuRules\SanshokuDoukouRule.cpp" />
+    <ClCompile Include="YakuRules\ShousangenRule.cpp" />
+    <ClCompile Include="YakuRules\ShousuushiiRule.cpp" />
+    <ClCompile Include="YakuRules\SuuankouRule.cpp" />
     <ClCompile Include="YakuRules\TanyaoRule.cpp" />
     <ClCompile Include="YakuRules\TenhoRule.cpp" />
     <ClCompile Include="YakuRules\ToitoiRule.cpp" />
+    <ClCompile Include="YakuRules\TsuuiisouRule.cpp" />
+    <ClCompile Include="YakuRules\RyuuiisouRule.cpp" />
+    <ClCompile Include="YakuRules\RyanpeikouRule.cpp" />
     <ClCompile Include="YakuRules\YakuhaiRule.cpp" />
     <ClCompile Include="YakuRules\YakuRule.cpp" />
     <ClCompile Include="YakuRules\YakuRuleRegistry.cpp" />

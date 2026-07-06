@@ -22,15 +22,22 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="YakuRules\ChankanRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="YakuRules\ChantaRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
     <ClCompile Include="YakuRules\ChihoRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
     <ClCompile Include="YakuRules\ChiitoitsuRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
     <ClCompile Include="YakuRules\ChinitsuRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="YakuRules\ChinroutouRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="YakuRules\ChuurenPoutouRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="YakuRules\DaisangenRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="YakuRules\DaisuushiiRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
     <ClCompile Include="YakuRules\HaiteiRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="YakuRules\HonroutouRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
     <ClCompile Include="YakuRules\HonitsuRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
     <ClCompile Include="YakuRules\HouteiRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
     <ClCompile Include="YakuRules\IipeikouRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
     <ClCompile Include="YakuRules\IppatsuRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
     <ClCompile Include="YakuRules\IttsuRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="YakuRules\JunchanRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
     <ClCompile Include="YakuRules\KokushiRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
     <ClCompile Include="MahjongHandAnalysis.cpp"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="MahjongYaku.cpp"><Filter>Source Files</Filter></ClCompile>
@@ -41,9 +48,16 @@
     <ClCompile Include="YakuRules\RinshanRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
     <ClCompile Include="YakuRules\SanankouRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
     <ClCompile Include="YakuRules\SanshokuDoujunRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="YakuRules\SanshokuDoukouRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="YakuRules\ShousangenRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="YakuRules\ShousuushiiRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="YakuRules\SuuankouRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
     <ClCompile Include="YakuRules\TanyaoRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
     <ClCompile Include="YakuRules\TenhoRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
     <ClCompile Include="YakuRules\ToitoiRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="YakuRules\TsuuiisouRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="YakuRules\RyuuiisouRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="YakuRules\RyanpeikouRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
     <ClCompile Include="YakuRules\YakuhaiRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
     <ClCompile Include="YakuRules\YakuRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
     <ClCompile Include="YakuRules\YakuRuleRegistry.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
