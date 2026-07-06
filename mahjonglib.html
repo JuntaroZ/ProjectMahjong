@@ -194,7 +194,7 @@
 <body>
   <header>
     <h1>MahjongLib 仕様書</h1>
-    <p>手牌解析、和了形判定、役判定、シャンテン計算、和了候補探索、表示用点数計算の仕様</p>
+    <p>手牌（てはい）解析、和了（ほうら）形判定、役判定、シャンテン計算、和了（ほうら）候補探索、表示用点数計算の仕様</p>
   </header>
 
   <main>
@@ -204,7 +204,7 @@
       <a href="#files">対象ファイル</a>
       <a href="#tile">牌表現</a>
       <a href="#factory">牌生成 API</a>
-      <a href="#context">和了条件</a>
+      <a href="#context">和了（ほうら）条件</a>
       <a href="#types">役関連の型</a>
       <a href="#view-analysis">手牌表示向け解析結果</a>
       <a href="#api">公開 API</a>
@@ -213,13 +213,14 @@
       <a href="#sanankou">三暗刻のロン判定</a>
       <a href="#internal">内部解析仕様</a>
       <a href="#limits">制限事項</a>
+      <a href="#remaining">残課題</a>
       <a href="#sample">使用例</a>
     </nav>
 
     <article>
       <section id="overview">
         <h2>概要</h2>
-        <p>MahjongLib は、麻雀の手牌解析、和了形判定、役判定、シャンテン計算、和了候補探索、表示用点数計算を行う C++17 ライブラリです。</p>
+        <p>MahjongLib は、麻雀の手牌（てはい）解析、和了（ほうら）形判定、役判定、シャンテン計算、和了（ほうら）候補探索、表示用点数計算を行う C++17 ライブラリです。</p>
         <p>本ライブラリは <code>mahjong</code> 名前空間に公開 API を持ち、画面表示や入力操作に依存しません。Win32 / GDI+ を使用する画面処理は <code>ProjectMahjong.cpp</code> 側の責務です。</p>
       </section>
 
@@ -228,10 +229,10 @@
         <table>
           <thead><tr><th>ファイル</th><th>役割</th></tr></thead>
           <tbody>
-            <tr><td><code>MahjongYaku.h</code></td><td>外部公開 API、牌、手牌条件、役、解析結果の型定義。</td></tr>
-            <tr><td><code>MahjongYaku.cpp</code></td><td>役判定 API、シャンテン計算、和了候補探索、表示用役一覧生成、表示用点数計算。</td></tr>
-            <tr><td><code>MahjongHandAnalysis.h/.cpp</code></td><td>手牌の内部解析、面子分解、七対子、国士無双の形判定。</td></tr>
-            <tr><td><code>YakuRules</code></td><td>役ごとの判定クラス、役名、翻数、役満設定。</td></tr>
+            <tr><td><code>MahjongYaku.h</code></td><td>外部公開 API、牌、手牌（てはい）条件、役、解析結果の型定義。</td></tr>
+            <tr><td><code>MahjongYaku.cpp</code></td><td>役判定 API、シャンテン計算、和了（ほうら）候補探索、表示用役一覧生成、表示用点数計算。</td></tr>
+            <tr><td><code>MahjongHandAnalysis.h/.cpp</code></td><td>手牌（てはい）の内部解析、面子（めんつ）分解、七対子（ちーといつ）、国士無双（こくしむそう）の形判定。</td></tr>
+            <tr><td><code>YakuRules</code></td><td>役ごとの判定クラス、役名、翻数（はんすう）、役満（やくまん）設定。</td></tr>
           </tbody>
         </table>
       </section>
@@ -248,10 +249,10 @@
         <table>
           <thead><tr><th>値</th><th>意味</th></tr></thead>
           <tbody>
-            <tr><td><code>Man</code></td><td>萬子</td></tr>
-            <tr><td><code>Pin</code></td><td>筒子</td></tr>
-            <tr><td><code>Sou</code></td><td>索子</td></tr>
-            <tr><td><code>Honor</code></td><td>字牌</td></tr>
+            <tr><td><code>Man</code></td><td>萬子（まんず）</td></tr>
+            <tr><td><code>Pin</code></td><td>筒子（ぴんず）</td></tr>
+            <tr><td><code>Sou</code></td><td>索子（そうず）</td></tr>
+            <tr><td><code>Honor</code></td><td>字牌（じはい）</td></tr>
           </tbody>
         </table>
 
@@ -263,14 +264,14 @@
         <table>
           <thead><tr><th>種類</th><th>rank の範囲</th></tr></thead>
           <tbody>
-            <tr><td>萬子</td><td>1 - 9</td></tr>
-            <tr><td>筒子</td><td>1 - 9</td></tr>
-            <tr><td>索子</td><td>1 - 9</td></tr>
-            <tr><td>字牌</td><td>1 - 7</td></tr>
+            <tr><td>萬子（まんず）</td><td>1 - 9</td></tr>
+            <tr><td>筒子（ぴんず）</td><td>1 - 9</td></tr>
+            <tr><td>索子（そうず）</td><td>1 - 9</td></tr>
+            <tr><td>字牌（じはい）</td><td>1 - 7</td></tr>
           </tbody>
         </table>
         <table>
-          <thead><tr><th>字牌 rank</th><th>牌</th></tr></thead>
+          <thead><tr><th>字牌（じはい） rank</th><th>牌</th></tr></thead>
           <tbody>
             <tr><td>1</td><td>東</td></tr>
             <tr><td>2</td><td>南</td></tr>
@@ -299,7 +300,7 @@ Tile Honor(int rank);</code></pre>
       </section>
 
       <section id="context">
-        <h2>和了条件</h2>
+        <h2>和了（ほうら）条件</h2>
         <h3>Wind</h3>
         <pre><code>enum class Wind {
     East = 1,
@@ -327,17 +328,17 @@ Tile Honor(int rank);</code></pre>
         <table>
           <thead><tr><th>フィールド</th><th>意味</th></tr></thead>
           <tbody>
-            <tr><td><code>winningTile</code></td><td>和了牌。平和の待ち判定、三暗刻のロン判定などで使用します。</td></tr>
-            <tr><td><code>seatWind</code></td><td>自風。役牌、平和の雀頭判定で使用します。</td></tr>
-            <tr><td><code>roundWind</code></td><td>場風。役牌、平和の雀頭判定で使用します。</td></tr>
-            <tr><td><code>isClosed</code></td><td>門前かどうか。</td></tr>
-            <tr><td><code>isTsumo</code></td><td>ツモ和了かどうか。</td></tr>
+            <tr><td><code>winningTile</code></td><td>和了牌（ほうらはい）。平和（ぴんふ）の待ち判定、三暗刻（さんあんこう）のロン判定などで使用します。</td></tr>
+            <tr><td><code>seatWind</code></td><td>自風（じかぜ）。役牌（やくはい）、平和（ぴんふ）の雀頭（じゃんとう）判定で使用します。</td></tr>
+            <tr><td><code>roundWind</code></td><td>場風（ばかぜ）。役牌（やくはい）、平和（ぴんふ）の雀頭（じゃんとう）判定で使用します。</td></tr>
+            <tr><td><code>isClosed</code></td><td>門前（めんぜん）かどうか。</td></tr>
+            <tr><td><code>isTsumo</code></td><td>ツモ和了（ほうら）かどうか。</td></tr>
             <tr><td><code>isRiichi</code></td><td>立直状態かどうか。</td></tr>
             <tr><td><code>isIppatsu</code></td><td>一発かどうか。<code>isRiichi</code> と併用します。</td></tr>
-            <tr><td><code>isRinshan</code></td><td>嶺上開花かどうか。</td></tr>
-            <tr><td><code>isChankan</code></td><td>槍槓かどうか。</td></tr>
-            <tr><td><code>isHaitei</code></td><td>海底撈月かどうか。</td></tr>
-            <tr><td><code>isHoutei</code></td><td>河底撈魚かどうか。</td></tr>
+            <tr><td><code>isRinshan</code></td><td>嶺上開花（りんしゃんかいほう）かどうか。</td></tr>
+            <tr><td><code>isChankan</code></td><td>槍槓（ちゃんかん）かどうか。</td></tr>
+            <tr><td><code>isHaitei</code></td><td>海底撈月（はいていらおゆえ）かどうか。</td></tr>
+            <tr><td><code>isHoutei</code></td><td>河底撈魚（ほうていらおゆい）かどうか。</td></tr>
             <tr><td><code>isTenho</code></td><td>天和かどうか。</td></tr>
             <tr><td><code>isChiho</code></td><td>地和かどうか。</td></tr>
           </tbody>
@@ -366,7 +367,7 @@ Tile Honor(int rank);</code></pre>
       </section>
 
       <section id="view-analysis">
-        <h2>手牌表示向け解析結果</h2>
+        <h2>手牌（てはい）表示向け解析結果</h2>
         <pre><code>struct HandViewAnalysis {
     bool invalidTileCount;
     bool winning;
@@ -380,12 +381,12 @@ Tile Honor(int rank);</code></pre>
           <thead><tr><th>フィールド</th><th>意味</th></tr></thead>
           <tbody>
             <tr><td><code>invalidTileCount</code></td><td>同じ牌が5枚以上ある場合 <code>true</code>。</td></tr>
-            <tr><td><code>winning</code></td><td>現在の14牌が和了形の場合 <code>true</code>。</td></tr>
-            <tr><td><code>ready</code></td><td>和了候補が存在する場合 <code>true</code>。</td></tr>
-            <tr><td><code>riichiOnlyWin</code></td><td>和了形だが表示対象役が無い場合 <code>true</code>。</td></tr>
-            <tr><td><code>shanten</code></td><td>シャンテン数。和了形は負数になります。</td></tr>
+            <tr><td><code>winning</code></td><td>現在の14牌が和了（ほうら）形の場合 <code>true</code>。</td></tr>
+            <tr><td><code>ready</code></td><td>和了（ほうら）候補が存在する場合 <code>true</code>。</td></tr>
+            <tr><td><code>riichiOnlyWin</code></td><td>和了（ほうら）形だが表示対象役が無い場合 <code>true</code>。</td></tr>
+            <tr><td><code>shanten</code></td><td>シャンテン数。和了（ほうら）形は負数になります。</td></tr>
             <tr><td><code>yaku</code></td><td>表示用成立役一覧。</td></tr>
-            <tr><td><code>winningCandidates</code></td><td>和了候補牌一覧。</td></tr>
+            <tr><td><code>winningCandidates</code></td><td>和了（ほうら）候補牌一覧。</td></tr>
           </tbody>
         </table>
       </section>
@@ -395,26 +396,26 @@ Tile Honor(int rank);</code></pre>
         <h3>EvaluateYaku</h3>
         <pre><code>YakuResult EvaluateYaku(const std::vector&lt;Tile&gt;&amp; closedTiles, const HandContext&amp; context);</code></pre>
         <ul>
-          <li>14牌の和了形判定と役判定を行います。</li>
+          <li>14牌の和了（ほうら）形判定と役判定を行います。</li>
           <li>14牌以外の場合は <code>std::invalid_argument</code> を送出します。</li>
-          <li>役満が成立した場合、通常役は評価結果に含めません。</li>
-          <li>通常役は、複数の面子分解候補の中から合計翻数が最大になるものを採用します。</li>
+          <li>役満（やくまん）が成立した場合、通常役は評価結果に含めません。</li>
+          <li>通常役は、複数の面子（めんつ）分解候補の中から合計翻数（はんすう）が最大になるものを採用します。</li>
         </ul>
 
         <h3>EvaluateCurrentYaku</h3>
         <pre><code>YakuResult EvaluateCurrentYaku(const std::vector&lt;Tile&gt;&amp; closedTiles, const HandContext&amp; context);</code></pre>
-        <p>現在の14牌に対して、和了形でなくても成立し得る表示用役を評価します。</p>
+        <p>現在の14牌に対して、和了（ほうら）形でなくても成立し得る表示用役を評価します。</p>
 
         <h3>CalculateShanten</h3>
         <pre><code>int CalculateShanten(const std::vector&lt;Tile&gt;&amp; tiles);</code></pre>
-        <p>通常形、七対子、国士無双のシャンテン数を計算し、最小値を返します。</p>
+        <p>通常形、七対子（ちーといつ）、国士無双（こくしむそう）のシャンテン数を計算し、最小値を返します。</p>
 
         <h3>FindWinningCandidates</h3>
         <pre><code>std::vector&lt;Tile&gt; FindWinningCandidates(const std::vector&lt;Tile&gt;&amp; hand, const HandContext&amp; context);</code></pre>
         <ul>
-          <li>14牌の最後の1牌をツモ／ロン牌として扱い、残り13牌に対する和了候補を列挙します。</li>
+          <li>14牌の最後の1牌をツモ／ロン牌として扱い、残り13牌に対する和了（ほうら）候補を列挙します。</li>
           <li>すでに4枚使われている牌は候補に含めません。</li>
-          <li><code>EvaluateYaku</code> で和了形になる牌を候補として返します。</li>
+          <li><code>EvaluateYaku</code> で和了（ほうら）形になる牌を候補として返します。</li>
         </ul>
 
         <h3>EvaluateDisplayYaku</h3>
@@ -424,7 +425,7 @@ Tile Honor(int rank);</code></pre>
     const std::vector&lt;Tile&gt;&amp; winningCandidates);</code></pre>
         <ul>
           <li>画面表示向けの役一覧を生成します。</li>
-          <li>現在の14牌が和了形の場合、その和了形の役を返します。</li>
+          <li>現在の14牌が和了（ほうら）形の場合、その和了（ほうら）形の役を返します。</li>
           <li>表示用役一覧から <code>立直</code> は除外します。</li>
           <li>同じ役名は重複して追加しません。</li>
         </ul>
@@ -433,12 +434,12 @@ Tile Honor(int rank);</code></pre>
         <pre><code>std::vector&lt;YakuScore&gt; CalculateDisplayYakuScores(
     const std::vector&lt;Yaku&gt;&amp; yaku,
     const HandContext&amp; context);</code></pre>
-        <p>表示用の点数文字列を生成します。表示は <code>翻数 / 点数</code> 形式です。</p>
+        <p>表示用の点数文字列を生成します。表示は <code>翻数（はんすう） / 点数</code> 形式です。</p>
         <div class="note">現在の点数は、簡易符を使った子ロン相当の表示点です。親、子、ロン、ツモなどの支払い表記は表示しません。</div>
         <table>
           <thead><tr><th>条件</th><th>符</th></tr></thead>
           <tbody>
-            <tr><td>七対子</td><td>25符</td></tr>
+            <tr><td>七対子（ちーといつ）</td><td>25符</td></tr>
             <tr><td>平和ツモ</td><td>20符</td></tr>
             <tr><td>その他</td><td>30符</td></tr>
           </tbody>
@@ -446,11 +447,11 @@ Tile Honor(int rank);</code></pre>
         <table>
           <thead><tr><th>条件</th><th>点数</th></tr></thead>
           <tbody>
-            <tr><td>満貫</td><td>8000点</td></tr>
-            <tr><td>跳満</td><td>12000点</td></tr>
-            <tr><td>倍満</td><td>16000点</td></tr>
-            <tr><td>三倍満</td><td>24000点</td></tr>
-            <tr><td>役満</td><td>32000点</td></tr>
+            <tr><td>満貫（まんがん）</td><td>8000点</td></tr>
+            <tr><td>跳満（はねまん）</td><td>12000点</td></tr>
+            <tr><td>倍満（ばいまん）</td><td>16000点</td></tr>
+            <tr><td>三倍満（さんばいまん）</td><td>24000点</td></tr>
+            <tr><td>役満（やくまん）</td><td>32000点</td></tr>
           </tbody>
         </table>
 
@@ -458,7 +459,7 @@ Tile Honor(int rank);</code></pre>
         <pre><code>HandViewAnalysis AnalyzeHandView(
     const std::vector&lt;Tile&gt;&amp; hand,
     const HandContext&amp; context);</code></pre>
-        <p>手牌画面用の総合解析を行います。同一牌5枚以上の検出、シャンテン計算、和了形判定、和了候補探索、表示用役一覧生成をまとめて行います。</p>
+        <p>手牌（てはい）画面用の総合解析を行います。同一牌5枚以上の検出、シャンテン計算、和了（ほうら）形判定、和了（ほうら）候補探索、表示用役一覧生成をまとめて行います。</p>
 
         <h3>その他</h3>
         <table>
@@ -474,74 +475,74 @@ Tile Honor(int rank);</code></pre>
 
       <section id="yaku">
         <h2>対応役</h2>
-        <h3>役満</h3>
+        <h3>役満（やくまん）</h3>
         <table>
-          <thead><tr><th>役名</th><th>翻数</th><th>条件</th></tr></thead>
+          <thead><tr><th>役名</th><th>翻数（はんすう）</th><th>条件</th></tr></thead>
           <tbody>
             <tr><td>天和</td><td>13</td><td><code>context.isTenho == true</code></td></tr>
             <tr><td>地和</td><td>13</td><td><code>context.isChiho == true</code></td></tr>
-            <tr><td>国士無双</td><td>13</td><td>国士無双形</td></tr>
-            <tr><td>四暗刻</td><td>13</td><td>暗刻4組。ロンで和了牌が刻子を完成させる場合は不成立。</td></tr>
-            <tr><td>大三元</td><td>13</td><td>三元牌3種類すべての刻子</td></tr>
-            <tr><td>小四喜</td><td>13</td><td>風牌3種類の刻子 + 風牌の雀頭</td></tr>
-            <tr><td>大四喜</td><td>13</td><td>風牌4種類すべての刻子</td></tr>
-            <tr><td>字一色</td><td>13</td><td>字牌のみ</td></tr>
-            <tr><td>緑一色</td><td>13</td><td>2索、3索、4索、6索、8索、發のみ</td></tr>
-            <tr><td>清老頭</td><td>13</td><td>老頭牌のみ</td></tr>
-            <tr><td>九蓮宝燈</td><td>13</td><td>門前、同一色で 1112345678999 + 同色1牌</td></tr>
+            <tr><td>国士無双（こくしむそう）</td><td>13</td><td>国士無双（こくしむそう）形</td></tr>
+            <tr><td>四暗刻（すーあんこう）</td><td>13</td><td>暗刻（あんこう）4組。ロンで和了牌（ほうらはい）が刻子（こーつ）を完成させる場合は不成立。</td></tr>
+            <tr><td>大三元（だいさんげん）</td><td>13</td><td>三元牌（さんげんぱい）3種類すべての刻子（こーつ）</td></tr>
+            <tr><td>小四喜（しょうすーしー）</td><td>13</td><td>風牌（ふうぱい）3種類の刻子（こーつ） + 風牌（ふうぱい）の雀頭（じゃんとう）</td></tr>
+            <tr><td>大四喜（だいすーしー）</td><td>13</td><td>風牌（ふうぱい）4種類すべての刻子（こーつ）</td></tr>
+            <tr><td>字一色（つーいーそー）</td><td>13</td><td>字牌（じはい）のみ</td></tr>
+            <tr><td>緑一色（りゅーいーそー）</td><td>13</td><td>2索（そう）、3索（そう）、4索（そう）、6索（そう）、8索（そう）、發（はつ）のみ</td></tr>
+            <tr><td>清老頭（ちんろうとう）</td><td>13</td><td>老頭牌（ろうとうはい）のみ</td></tr>
+            <tr><td>九蓮宝燈（ちゅうれんぽうとう）</td><td>13</td><td>門前（めんぜん）、同一色で 1112345678999 + 同色1牌</td></tr>
           </tbody>
         </table>
 
         <h3>通常役</h3>
         <table>
-          <thead><tr><th>役名</th><th>翻数</th><th>主な条件</th></tr></thead>
+          <thead><tr><th>役名</th><th>翻数（はんすう）</th><th>主な条件</th></tr></thead>
           <tbody>
-            <tr><td>立直</td><td>1</td><td><code>isRiichi &amp;&amp; isClosed</code></td></tr>
+            <tr><td>立直（りーち）</td><td>1</td><td><code>isRiichi &amp;&amp; isClosed</code></td></tr>
             <tr><td>一発</td><td>1</td><td><code>isIppatsu &amp;&amp; isRiichi</code></td></tr>
-            <tr><td>門前清自摸和</td><td>1</td><td><code>isTsumo &amp;&amp; isClosed</code></td></tr>
-            <tr><td>嶺上開花</td><td>1</td><td><code>isRinshan</code></td></tr>
-            <tr><td>槍槓</td><td>1</td><td><code>isChankan</code></td></tr>
-            <tr><td>海底撈月</td><td>1</td><td><code>isHaitei</code></td></tr>
-            <tr><td>河底撈魚</td><td>1</td><td><code>isHoutei</code></td></tr>
-            <tr><td>断么九</td><td>1</td><td>么九牌を含まない</td></tr>
-            <tr><td>平和</td><td>1</td><td>門前、全順子、役牌雀頭なし、両面待ち</td></tr>
-            <tr><td>一盃口</td><td>1</td><td>門前、同一順子2組</td></tr>
-            <tr><td>役牌</td><td>1</td><td>三元牌、自風、場風の刻子</td></tr>
-            <tr><td>対々和</td><td>2</td><td>全刻子</td></tr>
-            <tr><td>三暗刻</td><td>2</td><td>暗刻3組</td></tr>
-            <tr><td>七対子</td><td>2</td><td>七対子形</td></tr>
-            <tr><td>三色同順</td><td>門前2 / 鳴き1</td><td>萬子、筒子、索子で同じ数字の順子</td></tr>
-            <tr><td>三色同刻</td><td>2</td><td>萬子、筒子、索子で同じ数字の刻子</td></tr>
-            <tr><td>一気通貫</td><td>門前2 / 鳴き1</td><td>同一色で 123、456、789</td></tr>
-            <tr><td>混全帯么九</td><td>門前2 / 鳴き1</td><td>全面子と雀頭に么九牌を含み、字牌と順子を含む</td></tr>
-            <tr><td>純全帯么九</td><td>門前3 / 鳴き2</td><td>全面子と雀頭に老頭牌を含み、順子を含む</td></tr>
-            <tr><td>二盃口</td><td>3</td><td>門前、同一順子2組が2セット</td></tr>
-            <tr><td>小三元</td><td>2</td><td>三元牌2種類の刻子 + 三元牌の雀頭</td></tr>
-            <tr><td>混老頭</td><td>2</td><td>么九牌のみ</td></tr>
-            <tr><td>混一色</td><td>門前3 / 鳴き2</td><td>1色 + 字牌</td></tr>
-            <tr><td>清一色</td><td>門前6 / 鳴き5</td><td>1色のみ</td></tr>
+            <tr><td>門前清自摸和（めんぜんちんつもほう）</td><td>1</td><td><code>isTsumo &amp;&amp; isClosed</code></td></tr>
+            <tr><td>嶺上開花（りんしゃんかいほう）</td><td>1</td><td><code>isRinshan</code></td></tr>
+            <tr><td>槍槓（ちゃんかん）</td><td>1</td><td><code>isChankan</code></td></tr>
+            <tr><td>海底撈月（はいていらおゆえ）</td><td>1</td><td><code>isHaitei</code></td></tr>
+            <tr><td>河底撈魚（ほうていらおゆい）</td><td>1</td><td><code>isHoutei</code></td></tr>
+            <tr><td>断么九（たんやおちゅう）</td><td>1</td><td>么九牌（やおちゅうはい）を含まない</td></tr>
+            <tr><td>平和（ぴんふ）</td><td>1</td><td>門前（めんぜん）、全順子（ぜんしゅんつ）、役牌（やくはい）雀頭（じゃんとう）なし、両面（りゃんめん）待ち</td></tr>
+            <tr><td>一盃口（いーぺーこう）</td><td>1</td><td>門前（めんぜん）、同一順子（しゅんつ）2組</td></tr>
+            <tr><td>役牌（やくはい）</td><td>1</td><td>三元牌（さんげんぱい）、自風（じかぜ）、場風（ばかぜ）の刻子（こーつ）</td></tr>
+            <tr><td>対々和（といといほう）</td><td>2</td><td>全刻子（ぜんこーつ）</td></tr>
+            <tr><td>三暗刻（さんあんこう）</td><td>2</td><td>暗刻（あんこう）3組</td></tr>
+            <tr><td>七対子（ちーといつ）</td><td>2</td><td>七対子（ちーといつ）形</td></tr>
+            <tr><td>三色同順（さんしょくどうじゅん）</td><td>門前（めんぜん）2 / 鳴き（なき）1</td><td>萬子（まんず）、筒子（ぴんず）、索子（そうず）で同じ数字の順子（しゅんつ）</td></tr>
+            <tr><td>三色同刻（さんしょくどうこう）</td><td>2</td><td>萬子（まんず）、筒子（ぴんず）、索子（そうず）で同じ数字の刻子（こーつ）</td></tr>
+            <tr><td>一気通貫（いっきつうかん）</td><td>門前（めんぜん）2 / 鳴き（なき）1</td><td>同一色で 123、456、789</td></tr>
+            <tr><td>混全帯么九（ほんちゃんたいやおちゅう）</td><td>門前（めんぜん）2 / 鳴き（なき）1</td><td>全面子（ぜんめんつ）と雀頭（じゃんとう）に么九牌（やおちゅうはい）を含み、字牌（じはい）と順子（しゅんつ）を含む</td></tr>
+            <tr><td>純全帯么九（じゅんちゃんたいやおちゅう）</td><td>門前（めんぜん）3 / 鳴き（なき）2</td><td>全面子（ぜんめんつ）と雀頭（じゃんとう）に老頭牌（ろうとうはい）を含み、順子（しゅんつ）を含む</td></tr>
+            <tr><td>二盃口（りゃんぺーこう）</td><td>3</td><td>門前（めんぜん）、同一順子（しゅんつ）2組が2セット</td></tr>
+            <tr><td>小三元（しょうさんげん）</td><td>2</td><td>三元牌（さんげんぱい）2種類の刻子（こーつ） + 三元牌（さんげんぱい）の雀頭（じゃんとう）</td></tr>
+            <tr><td>混老頭（ほんろうとう）</td><td>2</td><td>么九牌（やおちゅうはい）のみ</td></tr>
+            <tr><td>混一色（ほんいつ）</td><td>門前（めんぜん）3 / 鳴き（なき）2</td><td>1色 + 字牌（じはい）</td></tr>
+            <tr><td>清一色（ちんいつ）</td><td>門前（めんぜん）6 / 鳴き（なき）5</td><td>1色のみ</td></tr>
           </tbody>
         </table>
       </section>
 
       <section id="pinfu">
-        <h2>平和の待ち判定</h2>
-        <p>平和は以下の場合に成立しません。</p>
+        <h2>平和（ぴんふ）の待ち判定</h2>
+        <p>平和（ぴんふ）は以下の場合に成立しません。</p>
         <ul>
-          <li>待ちが雀頭の場合</li>
-          <li>嵌張待ちの場合</li>
-          <li>辺張待ちの場合</li>
-          <li>雀頭が三元牌、自風、場風の場合</li>
-          <li>門前でない場合</li>
+          <li>待ちが雀頭（じゃんとう）の場合</li>
+          <li>嵌張（かんちゃん）待ちの場合</li>
+          <li>辺張（ぺんちゃん）待ちの場合</li>
+          <li>雀頭（じゃんとう）が三元牌（さんげんぱい）、自風（じかぜ）、場風（ばかぜ）の場合</li>
+          <li>門前（めんぜん）でない場合</li>
         </ul>
-        <p>現在の実装では <code>context.winningTile</code> を使用して両面待ちかどうかを判定します。</p>
+        <p>現在の実装では <code>context.winningTile</code> を使用して両面（りゃんめん）待ちかどうかを判定します。</p>
       </section>
 
       <section id="sanankou">
-        <h2>三暗刻のロン判定</h2>
+        <h2>三暗刻（さんあんこう）のロン判定</h2>
         <ul>
-          <li>ツモの場合、刻子は暗刻として扱います。</li>
-          <li>ロンの場合、和了牌で完成した刻子は明刻扱いとして暗刻数から除外します。</li>
+          <li>ツモの場合、刻子（こーつ）は暗刻（あんこう）として扱います。</li>
+          <li>ロンの場合、和了牌（ほうらはい）で完成した刻子（こーつ）は明刻（みんこー）扱いとして暗刻（あんこう）数から除外します。</li>
         </ul>
       </section>
 
@@ -550,26 +551,33 @@ Tile Honor(int rank);</code></pre>
         <table>
           <thead><tr><th>インデックス範囲</th><th>牌</th></tr></thead>
           <tbody>
-            <tr><td>0 - 8</td><td>萬子</td></tr>
-            <tr><td>9 - 17</td><td>筒子</td></tr>
-            <tr><td>18 - 26</td><td>索子</td></tr>
-            <tr><td>27 - 33</td><td>字牌</td></tr>
+            <tr><td>0 - 8</td><td>萬子（まんず）</td></tr>
+            <tr><td>9 - 17</td><td>筒子（ぴんず）</td></tr>
+            <tr><td>18 - 26</td><td>索子（そうず）</td></tr>
+            <tr><td>27 - 33</td><td>字牌（じはい）</td></tr>
           </tbody>
         </table>
-        <p><code>AnalyzeHand</code> は、牌カウント、通常形の全分解候補、七対子形、国士無双形を解析します。同一牌が5枚以上ある場合は <code>std::invalid_argument</code> を送出します。</p>
+        <p><code>AnalyzeHand</code> は、牌カウント、通常形の全分解候補、七対子（ちーといつ）形、国士無双（こくしむそう）形を解析します。同一牌が5枚以上ある場合は <code>std::invalid_argument</code> を送出します。</p>
       </section>
 
       <section id="limits">
         <h2>制限事項</h2>
         <ul>
-          <li>現在の公開 API は基本的に閉じた手牌ベースです。</li>
-          <li>鳴き面子を外部から明示的に渡す API はありません。</li>
+          <li>現在の公開 API は基本的に閉じた手牌（てはい）ベースです。</li>
+          <li>鳴き（なき）面子（めんつ）を外部から明示的に渡す API はありません。</li>
           <li>ドラ、赤ドラ、裏ドラ、場棒、本場は未対応です。</li>
           <li>点数計算の符は簡易仕様です。</li>
-          <li>ダブル役満、数え役満の細かい扱いは未整備です。</li>
-          <li>四槓子は槓情報を保持するデータ構造がないため未対応です。</li>
-          <li>流し満貫、人和など、局進行情報が必要な役は未対応です。</li>
+          <li>ダブル役満（やくまん）、数え役満（かぞえやくまん）の細かい扱いは未整備です。</li>
+          <li>四槓子（すーかんつ）は槓（かん）情報を保持するデータ構造がないため未対応です。</li>
+          <li>流し満貫（ながしまんがん）、人和（れんほう）など、局進行情報が必要な役は未対応です。</li>
           <li>役判定は現在実装済みの役に限定されます。</li>
+        </ul>
+      </section>
+
+      <section id="remaining">
+        <h2>残課題</h2>
+        <ul>
+          <li>鳴き（なき）の処理は未対応です。チー、ポン、明槓（みんかん）、暗槓（あんかん）、加槓（かかん）などの面子（めんつ）情報を保持するデータ構造と、それを使った役判定 API の追加が必要です。</li>
         </ul>
       </section>
 
