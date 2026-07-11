@@ -24,8 +24,15 @@ int TileIndex(const Tile& tile)
 bool HasTriplet(const Decomposition& hand, int tile)
 {
     return std::any_of(hand.melds.begin(), hand.melds.end(), [tile](const Meld& meld) {
-        return meld.type == Meld::Type::Triplet && meld.tile == tile;
+        return !meld.open && meld.type == Meld::Type::Triplet && meld.tile == tile;
     });
+}
+
+int CountConcealedTriplets(const Decomposition& hand)
+{
+    return static_cast<int>(std::count_if(hand.melds.begin(), hand.melds.end(), [](const Meld& meld) {
+        return !meld.open && meld.type == Meld::Type::Triplet;
+    }));
 }
 
 } // namespace
@@ -36,7 +43,7 @@ void SanankouRule::Evaluate(const HandAnalysis&, const Decomposition* hand, cons
         return;
     }
 
-    int concealedTriplets = CountTriplets(*hand);
+    int concealedTriplets = CountConcealedTriplets(*hand);
     const int winningTile = TileIndex(context.winningTile);
     if (!context.isTsumo && HasTriplet(*hand, winningTile)) {
         --concealedTriplets;

@@ -1,4 +1,4 @@
-#include "MahjongYaku.h"
+﻿#include "MahjongYaku.h"
 
 #include <algorithm>
 #include <filesystem>
@@ -29,36 +29,80 @@ constexpr int CandidateFramePadding = 6;
 constexpr int CandidateRowGap = 42;
 constexpr int MaxWinningCandidateCount = 13;
 constexpr int WindowPadding = 16;
-constexpr int YakuAreaHeight = 248;
+constexpr int YakuAreaHeight = 270;
 constexpr int SelectionPadding = 6;
 constexpr int SelectionPenWidth = 3;
 constexpr int SortButtonWidth = 124;
 constexpr int TsumoRonButtonWidth = 150;
+constexpr int MeldButtonWidth = 72;
 constexpr int SortButtonHeight = 28;
+constexpr int ButtonGap = 10;
+constexpr int MeldAreaGap = 34;
 
 struct TileImage {
     std::wstring fileName;
     std::unique_ptr<Gdiplus::Image> image;
 };
 
+enum class SelectionArea {
+    HandTile,
+    OpenMeld
+};
+
+enum class OpenMeldType {
+    Chi,
+    Pon,
+    Kan
+};
+
+struct OpenMeld {
+    OpenMeldType type;
+    std::vector<mahjong::Tile> tiles;
+};
+
+struct OpenMeldImages {
+    std::vector<TileImage> tiles;
+};
+
+struct MeldButtonState {
+    bool canChi{ false };
+    bool canPon{ false };
+    bool canKan{ false };
+    bool canReturn{ false };
+};
+
 std::vector<TileImage> g_tileImages;
 std::vector<TileImage> g_candidateImages;
+std::vector<OpenMeldImages> g_openMeldImages;
 std::vector<mahjong::Tile> g_hand;
+std::vector<OpenMeld> g_openMelds;
 std::vector<mahjong::Tile> g_winningCandidates;
 mahjong::HandContext g_context;
+mahjong::HandContext g_baseContext;
 std::wstring g_yakuText;
 std::wstring g_shantenText;
+MeldButtonState g_meldButtons;
 bool g_invalidTileSelection = false;
 bool g_isRonTile = false;
 bool g_tsumoRonLabelTouched = false;
 std::filesystem::path g_imageDirectory;
+SelectionArea g_selectionArea = SelectionArea::HandTile;
 std::size_t g_selectedTile = 0;
+std::size_t g_selectedMeld = 0;
 ULONG_PTR g_gdiplusToken = 0;
 
 std::vector<std::wstring> CollectDisplayYakuLines();
+int TileSortIndex(const mahjong::Tile& tile);
 RECT TileImageRect(std::size_t index);
+SIZE TileDrawSize(const TileImage& tileImage);
+int HandRight();
 RECT SortButtonRect();
 RECT TsumoRonButtonRect();
+RECT ChiButtonRect();
+RECT PonButtonRect();
+RECT KanButtonRect();
+RECT ReturnMeldButtonRect();
+void ResizeWindowToHand(HWND hwnd);
 
 int TileTop()
 {
@@ -81,6 +125,85 @@ std::wstring Utf8ToWide(const std::string& text)
     return wide;
 }
 
+std::vector<mahjong::Tile> AnalysisHand()
+{
+    std::vector<mahjong::Tile> tiles;
+    if (!g_hand.empty()) {
+        tiles.insert(tiles.end(), g_hand.begin(), g_hand.end() - 1);
+    }
+    for (const OpenMeld& meld : g_openMelds) {
+        tiles.insert(tiles.end(), meld.tiles.begin(), meld.tiles.end());
+    }
+    if (!g_hand.empty()) {
+        tiles.push_back(g_hand.back());
+    }
+    return tiles;
+}
+
+mahjong::HandState CurrentHandState()
+{
+    mahjong::HandState state;
+    state.closedTiles = g_hand;
+    state.context = g_context;
+    state.openMelds.reserve(g_openMelds.size());
+
+    for (const OpenMeld& meld : g_openMelds) {
+        mahjong::OpenMeld openMeld;
+        switch (meld.type) {
+        case OpenMeldType::Chi:
+            openMeld.type = mahjong::MeldType::Sequence;
+            break;
+        case OpenMeldType::Pon:
+            openMeld.type = mahjong::MeldType::Triplet;
+            break;
+        case OpenMeldType::Kan:
+            openMeld.type = mahjong::MeldType::Quad;
+            break;
+        }
+        openMeld.tiles = meld.tiles;
+        state.openMelds.push_back(std::move(openMeld));
+    }
+
+    return state;
+}
+
+std::vector<mahjong::Tile> AllTilesForCurrentState()
+{
+    std::vector<mahjong::Tile> tiles = g_hand;
+    for (const OpenMeld& meld : g_openMelds) {
+        tiles.insert(tiles.end(), meld.tiles.begin(), meld.tiles.end());
+    }
+    return tiles;
+}
+
+bool SameTile(const mahjong::Tile& left, const mahjong::Tile& right)
+{
+    return left == right;
+}
+
+int CountTileInHand(const mahjong::Tile& target)
+{
+    return static_cast<int>(std::count(g_hand.begin(), g_hand.end(), target));
+}
+
+bool IsNumberTile(const mahjong::Tile& tile)
+{
+    return tile.suit != mahjong::Suit::Honor;
+}
+
+mahjong::Tile MakeTile(mahjong::Suit suit, int rank)
+{
+    return { suit, rank };
+}
+
+std::vector<mahjong::Tile> SortedMeldTiles(std::vector<mahjong::Tile> tiles)
+{
+    std::sort(tiles.begin(), tiles.end(), [](const mahjong::Tile& left, const mahjong::Tile& right) {
+        return TileSortIndex(left) < TileSortIndex(right);
+    });
+    return tiles;
+}
+
 void UpdateYakuText()
 {
     if (g_invalidTileSelection) {
@@ -89,7 +212,7 @@ void UpdateYakuText()
     }
 
     try {
-        const mahjong::HandViewAnalysis analysis = mahjong::AnalyzeHandView(g_hand, g_context);
+        const mahjong::HandViewAnalysis analysis = mahjong::AnalyzeHandView(CurrentHandState());
         if (!analysis.winning && !analysis.ready) {
             g_yakuText.clear();
             return;
@@ -121,7 +244,7 @@ void UpdateShantenText()
     }
 
     try {
-        const mahjong::HandViewAnalysis analysis = mahjong::AnalyzeHandView(g_hand, g_context);
+        const mahjong::HandViewAnalysis analysis = mahjong::AnalyzeHandView(CurrentHandState());
         if (analysis.winning) {
             g_shantenText = analysis.riichiOnlyWin ? L"和了（リーチのみ）" : L"和了";
         }
@@ -146,8 +269,8 @@ void UpdateShantenText()
 void UpdateInvalidTileSelection()
 {
     g_invalidTileSelection = false;
-    if (g_selectedTile < g_hand.size()) {
-        g_invalidTileSelection = mahjong::CountTile(g_hand, g_hand[g_selectedTile]) > 4;
+    if (g_selectionArea == SelectionArea::HandTile && g_selectedTile < g_hand.size()) {
+        g_invalidTileSelection = mahjong::CountTile(AllTilesForCurrentState(), g_hand[g_selectedTile]) > 4;
     }
 }
 
@@ -157,6 +280,7 @@ void UpdateWinningTileFromHand()
         g_context.winningTile = g_hand.back();
     }
     g_context.isTsumo = !g_isRonTile;
+    g_context.isClosed = g_openMelds.empty() && g_baseContext.isClosed;
 }
 
 std::wstring TileImageFileName(const mahjong::Tile& tile)
@@ -205,7 +329,7 @@ int TileSortIndex(const mahjong::Tile& tile)
 
 void SortHand()
 {
-    const auto sortEnd = g_hand.size() == 14 ? g_hand.end() - 1 : g_hand.end();
+    const auto sortEnd = g_hand.size() >= 2 ? g_hand.end() - 1 : g_hand.end();
     std::sort(g_hand.begin(), sortEnd, [](const mahjong::Tile& left, const mahjong::Tile& right) {
         return TileSortIndex(left) < TileSortIndex(right);
     });
@@ -287,22 +411,103 @@ void LoadWinningCandidateImages()
     }
 }
 
+void LoadOpenMeldImages()
+{
+    g_openMeldImages.clear();
+    g_openMeldImages.reserve(g_openMelds.size());
+
+    for (const OpenMeld& meld : g_openMelds) {
+        OpenMeldImages images;
+        images.tiles.reserve(meld.tiles.size());
+        for (const mahjong::Tile& tile : meld.tiles) {
+            const std::wstring fileName = TileImageFileName(tile);
+            auto image = std::make_unique<Gdiplus::Image>((g_imageDirectory / fileName).c_str());
+            images.tiles.push_back({ fileName, std::move(image) });
+        }
+        g_openMeldImages.push_back(std::move(images));
+    }
+}
+
+bool CanChiSelectedTile()
+{
+    if (g_selectionArea != SelectionArea::HandTile || g_selectedTile >= g_hand.size()) {
+        return false;
+    }
+    if (g_hand.size() >= 2 && g_selectedTile == g_hand.size() - 1) {
+        return false;
+    }
+
+    const mahjong::Tile selected = g_hand[g_selectedTile];
+    if (!IsNumberTile(selected)) {
+        return false;
+    }
+
+    for (int start = selected.rank; start >= selected.rank - 2; --start) {
+        if (start < 1 || start + 2 > 9) {
+            continue;
+        }
+
+        std::vector<mahjong::Tile> needed = {
+            MakeTile(selected.suit, start),
+            MakeTile(selected.suit, start + 1),
+            MakeTile(selected.suit, start + 2)
+        };
+        bool possible = true;
+        for (const mahjong::Tile& tile : needed) {
+            if (CountTileInHand(tile) < 1) {
+                possible = false;
+                break;
+            }
+        }
+        if (possible) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool CanPonSelectedTile()
+{
+    return g_selectionArea == SelectionArea::HandTile
+        && g_selectedTile < g_hand.size()
+        && !(g_hand.size() >= 2 && g_selectedTile == g_hand.size() - 1)
+        && CountTileInHand(g_hand[g_selectedTile]) >= 3;
+}
+
+bool CanKanSelectedTile()
+{
+    return g_selectionArea == SelectionArea::HandTile
+        && g_selectedTile < g_hand.size()
+        && !(g_hand.size() >= 2 && g_selectedTile == g_hand.size() - 1)
+        && CountTileInHand(g_hand[g_selectedTile]) >= 4;
+}
+
+void UpdateMeldButtonState()
+{
+    g_meldButtons.canChi = CanChiSelectedTile();
+    g_meldButtons.canPon = CanPonSelectedTile();
+    g_meldButtons.canKan = CanKanSelectedTile();
+    g_meldButtons.canReturn = g_selectionArea == SelectionArea::OpenMeld && g_selectedMeld < g_openMelds.size();
+}
+
 void UpdateWinningCandidates()
 {
     g_winningCandidates.clear();
-    if (g_invalidTileSelection || !g_context.isRiichi || g_hand.size() != 14) {
+    const mahjong::HandState handState = CurrentHandState();
+    if (g_invalidTileSelection || !g_context.isRiichi || AllTilesForCurrentState().size() != 14) {
         LoadWinningCandidateImages();
         return;
     }
 
-    g_winningCandidates = mahjong::FindWinningCandidates(g_hand, g_context);
+    g_winningCandidates = mahjong::FindWinningCandidates(handState);
 
     LoadWinningCandidateImages();
 }
 
 std::vector<std::wstring> CollectDisplayYakuLines()
 {
-    const std::vector<mahjong::Yaku> yaku = mahjong::EvaluateDisplayYaku(g_hand, g_context, g_winningCandidates);
+    std::vector<mahjong::Yaku> yaku = mahjong::EvaluateDisplayYaku(CurrentHandState(), g_winningCandidates);
     const std::vector<mahjong::YakuScore> scores = mahjong::CalculateDisplayYakuScores(yaku, g_context);
 
     std::vector<std::wstring> lines;
@@ -356,18 +561,37 @@ mahjong::Suit PreviousSuit(mahjong::Suit suit)
 
 void MoveSelectedTile(int direction)
 {
-    if (g_hand.empty()) {
+    const int handCount = static_cast<int>(g_hand.size());
+    const int meldCount = static_cast<int>(g_openMelds.size());
+    const int totalCount = handCount + meldCount;
+    if (totalCount == 0) {
         return;
     }
 
-    const int tileCount = static_cast<int>(g_hand.size());
-    const int nextIndex = (static_cast<int>(g_selectedTile) + tileCount + direction) % tileCount;
-    g_selectedTile = static_cast<std::size_t>(nextIndex);
+    int current = 0;
+    if (g_selectionArea == SelectionArea::HandTile) {
+        current = static_cast<int>(std::min(g_selectedTile, g_hand.empty() ? 0 : g_hand.size() - 1));
+    }
+    else {
+        current = handCount + static_cast<int>(std::min(g_selectedMeld, g_openMelds.empty() ? 0 : g_openMelds.size() - 1));
+    }
+
+    const int next = (current + totalCount + direction) % totalCount;
+    if (next < handCount) {
+        g_selectionArea = SelectionArea::HandTile;
+        g_selectedTile = static_cast<std::size_t>(next);
+    }
+    else {
+        g_selectionArea = SelectionArea::OpenMeld;
+        g_selectedMeld = static_cast<std::size_t>(next - handCount);
+    }
+    UpdateInvalidTileSelection();
+    UpdateMeldButtonState();
 }
 
 void ChangeSelectedTileRank(int direction)
 {
-    if (g_selectedTile >= g_hand.size()) {
+    if (g_selectionArea != SelectionArea::HandTile || g_selectedTile >= g_hand.size()) {
         return;
     }
 
@@ -387,11 +611,12 @@ void ChangeSelectedTileRank(int direction)
     LoadTileImage(g_selectedTile);
     UpdateWinningTileFromHand();
     UpdateInvalidTileSelection();
+    UpdateMeldButtonState();
 }
 
 void ChangeSelectedTileSuit(int direction)
 {
-    if (g_selectedTile >= g_hand.size()) {
+    if (g_selectionArea != SelectionArea::HandTile || g_selectedTile >= g_hand.size()) {
         return;
     }
 
@@ -402,6 +627,161 @@ void ChangeSelectedTileSuit(int direction)
     LoadTileImage(g_selectedTile);
     UpdateWinningTileFromHand();
     UpdateInvalidTileSelection();
+    UpdateMeldButtonState();
+}
+
+void RemoveTilesForMeld(const std::vector<mahjong::Tile>& tiles)
+{
+    std::vector<bool> remove(g_hand.size(), false);
+    for (const mahjong::Tile& tile : tiles) {
+        for (std::size_t i = 0; i < g_hand.size(); ++i) {
+            if (!remove[i] && SameTile(g_hand[i], tile)) {
+                remove[i] = true;
+                break;
+            }
+        }
+    }
+
+    std::vector<mahjong::Tile> remaining;
+    remaining.reserve(g_hand.size());
+    for (std::size_t i = 0; i < g_hand.size(); ++i) {
+        if (!remove[i]) {
+            remaining.push_back(g_hand[i]);
+        }
+    }
+    g_hand = std::move(remaining);
+}
+
+bool MakeChiMeld()
+{
+    if (!CanChiSelectedTile()) {
+        return false;
+    }
+
+    const mahjong::Tile selected = g_hand[g_selectedTile];
+    for (int start = selected.rank - 2; start <= selected.rank; ++start) {
+        if (start < 1 || start + 2 > 9) {
+            continue;
+        }
+
+        std::vector<mahjong::Tile> tiles = {
+            MakeTile(selected.suit, start),
+            MakeTile(selected.suit, start + 1),
+            MakeTile(selected.suit, start + 2)
+        };
+
+        bool possible = true;
+        for (const mahjong::Tile& tile : tiles) {
+            if (CountTileInHand(tile) < 1) {
+                possible = false;
+                break;
+            }
+        }
+
+        if (possible) {
+            g_openMelds.push_back({ OpenMeldType::Chi, tiles });
+            RemoveTilesForMeld(tiles);
+            g_selectionArea = SelectionArea::OpenMeld;
+            g_selectedMeld = g_openMelds.empty() ? 0 : g_openMelds.size() - 1;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool MakeSameTileMeld(OpenMeldType type, int count)
+{
+    if (g_selectionArea != SelectionArea::HandTile || g_selectedTile >= g_hand.size()) {
+        return false;
+    }
+    const mahjong::Tile selected = g_hand[g_selectedTile];
+    if (CountTileInHand(selected) < count) {
+        return false;
+    }
+
+    std::vector<mahjong::Tile> tiles(static_cast<std::size_t>(count), selected);
+    g_openMelds.push_back({ type, tiles });
+    RemoveTilesForMeld(tiles);
+    g_selectionArea = SelectionArea::OpenMeld;
+    g_selectedMeld = g_openMelds.empty() ? 0 : g_openMelds.size() - 1;
+    return true;
+}
+
+bool ReturnSelectedMeld()
+{
+    if (g_selectionArea != SelectionArea::OpenMeld || g_selectedMeld >= g_openMelds.size()) {
+        return false;
+    }
+
+    const auto insertPosition = g_hand.empty() ? g_hand.end() : g_hand.end() - 1;
+    g_hand.insert(insertPosition, g_openMelds[g_selectedMeld].tiles.begin(), g_openMelds[g_selectedMeld].tiles.end());
+    g_openMelds.erase(g_openMelds.begin() + static_cast<std::ptrdiff_t>(g_selectedMeld));
+    g_selectionArea = SelectionArea::HandTile;
+    g_selectedTile = g_hand.size() >= 2 ? g_hand.size() - 2 : 0;
+    g_selectedMeld = 0;
+    return true;
+}
+
+void RefreshAfterHandStructureChanged(HWND hwnd)
+{
+    LoadTileImages(g_hand);
+    LoadOpenMeldImages();
+    UpdateWinningTileFromHand();
+    UpdateInvalidTileSelection();
+    UpdateMeldButtonState();
+    UpdateWinningCandidates();
+    UpdateYakuText();
+    UpdateShantenText();
+    ResizeWindowToHand(hwnd);
+    InvalidateRect(hwnd, nullptr, FALSE);
+}
+
+SIZE MeldImagesSize(const OpenMeldImages& meldImages)
+{
+    SIZE size{ 0, 0 };
+    for (const TileImage& tileImage : meldImages.tiles) {
+        const SIZE tileSize = TileDrawSize(tileImage);
+        size.cx += tileSize.cx + CandidateGap;
+        size.cy = std::max(size.cy, tileSize.cy);
+    }
+    if (!meldImages.tiles.empty()) {
+        size.cx -= CandidateGap;
+    }
+    return size;
+}
+
+int OpenMeldLeft(std::size_t index)
+{
+    int x = HandRight() + MeldAreaGap;
+    for (std::size_t i = 0; i < index && i < g_openMeldImages.size(); ++i) {
+        x += MeldImagesSize(g_openMeldImages[i]).cx + MeldAreaGap;
+    }
+    return x;
+}
+
+RECT OpenMeldRect(std::size_t index)
+{
+    if (index >= g_openMeldImages.size()) {
+        return { 0, 0, 0, 0 };
+    }
+    const SIZE size = MeldImagesSize(g_openMeldImages[index]);
+    const int left = OpenMeldLeft(index);
+    return {
+        left,
+        TileTop(),
+        left + size.cx,
+        TileTop() + size.cy
+    };
+}
+
+int OpenMeldsRight()
+{
+    if (g_openMeldImages.empty()) {
+        return HandRight();
+    }
+    const RECT rect = OpenMeldRect(g_openMeldImages.size() - 1);
+    return rect.right;
 }
 
 SIZE HandImageSize()
@@ -429,6 +809,11 @@ SIZE HandImageSize()
     if (g_tileImages.size() >= 2) {
         size.cx += TsumoGap;
     }
+
+    if (!g_openMeldImages.empty()) {
+        size.cx = std::max<LONG>(size.cx, OpenMeldsRight() + WindowPadding);
+    }
+    size.cx = std::max<LONG>(size.cx, ReturnMeldButtonRect().right + WindowPadding);
 
     size.cy += static_cast<LONG>(maxHeight);
 
@@ -519,6 +904,32 @@ RECT CandidateAreaRect()
     };
 }
 
+RECT CandidateInvalidateRect()
+{
+    LONG tileWidth = 64;
+    LONG tileHeight = 90;
+    for (const TileImage& tileImage : g_tileImages) {
+        const SIZE tileSize = TileDrawSize(tileImage);
+        tileWidth = std::max(tileWidth, tileSize.cx);
+        tileHeight = std::max(tileHeight, tileSize.cy);
+    }
+    for (const TileImage& tileImage : g_candidateImages) {
+        const SIZE tileSize = TileDrawSize(tileImage);
+        tileWidth = std::max(tileWidth, tileSize.cx);
+        tileHeight = std::max(tileHeight, tileSize.cy);
+    }
+
+    const LONG candidateWidth = tileWidth * MaxWinningCandidateCount
+        + CandidateGap * (MaxWinningCandidateCount - 1);
+    const int top = CandidateTop();
+    return {
+        WindowPadding - CandidateFramePadding - SelectionPenWidth,
+        top - 32,
+        WindowPadding + candidateWidth + CandidateFramePadding + SelectionPenWidth,
+        top + tileHeight + CandidateFramePadding + SelectionPenWidth
+    };
+}
+
 RECT TileInvalidateRect(std::size_t index)
 {
     const int x = TileLeft(index);
@@ -536,6 +947,37 @@ RECT TileInvalidateRect(std::size_t index)
     };
 }
 
+RECT OpenMeldInvalidateRect(std::size_t index)
+{
+    RECT meldRect = OpenMeldRect(index);
+    if (meldRect.right <= meldRect.left || meldRect.bottom <= meldRect.top) {
+        return meldRect;
+    }
+
+    return {
+        meldRect.left - SelectionPadding - SelectionPenWidth,
+        meldRect.top - SelectionPadding - SelectionPenWidth,
+        meldRect.right + SelectionPadding + SelectionPenWidth,
+        meldRect.bottom + SelectionPadding + SelectionPenWidth
+    };
+}
+
+RECT SelectionInvalidateRect(SelectionArea area, std::size_t index)
+{
+    return area == SelectionArea::HandTile
+        ? TileInvalidateRect(index)
+        : OpenMeldInvalidateRect(index);
+}
+
+void InvalidateSelectionArea(HWND hwnd, SelectionArea area, std::size_t index)
+{
+    RECT rect = SelectionInvalidateRect(area, index);
+    if (rect.right <= rect.left || rect.bottom <= rect.top) {
+        return;
+    }
+    InvalidateRect(hwnd, &rect, FALSE);
+}
+
 void InvalidateTile(HWND hwnd, std::size_t index)
 {
     RECT rect = TileInvalidateRect(index);
@@ -551,6 +993,32 @@ void InvalidateYakuArea(HWND hwnd)
 void InvalidateYakuTextArea(HWND hwnd)
 {
     RECT rect{ 0, 0, 4096, 210 };
+    InvalidateRect(hwnd, &rect, FALSE);
+}
+
+void InvalidateCommandButtonArea(HWND hwnd)
+{
+    const RECT sortRect = SortButtonRect();
+    const RECT returnRect = ReturnMeldButtonRect();
+    RECT rect{
+        sortRect.left - SelectionPenWidth,
+        sortRect.top - SelectionPenWidth,
+        returnRect.right + SelectionPenWidth,
+        returnRect.bottom + SelectionPenWidth
+    };
+    InvalidateRect(hwnd, &rect, FALSE);
+}
+
+void InvalidateMeldButtonArea(HWND hwnd)
+{
+    const RECT chiRect = ChiButtonRect();
+    const RECT returnRect = ReturnMeldButtonRect();
+    RECT rect{
+        chiRect.left - SelectionPenWidth,
+        chiRect.top - SelectionPenWidth,
+        returnRect.right + SelectionPenWidth,
+        returnRect.bottom + SelectionPenWidth
+    };
     InvalidateRect(hwnd, &rect, FALSE);
 }
 
@@ -579,6 +1047,37 @@ RECT TsumoRonButtonRect()
     };
 }
 
+RECT ButtonRectAfter(const RECT& previous, int width)
+{
+    const int left = previous.right + ButtonGap;
+    return {
+        left,
+        previous.top,
+        left + width,
+        previous.bottom
+    };
+}
+
+RECT ChiButtonRect()
+{
+    return ButtonRectAfter(TsumoRonButtonRect(), MeldButtonWidth);
+}
+
+RECT PonButtonRect()
+{
+    return ButtonRectAfter(ChiButtonRect(), MeldButtonWidth);
+}
+
+RECT KanButtonRect()
+{
+    return ButtonRectAfter(PonButtonRect(), MeldButtonWidth);
+}
+
+RECT ReturnMeldButtonRect()
+{
+    return ButtonRectAfter(KanButtonRect(), MeldButtonWidth);
+}
+
 bool IsPointInRect(const RECT& rect, int x, int y)
 {
     return x >= rect.left && x < rect.right && y >= rect.top && y < rect.bottom;
@@ -589,6 +1088,12 @@ void InvalidateCandidateArea(HWND hwnd, const RECT& rect)
     if (rect.right <= rect.left || rect.bottom <= rect.top) {
         return;
     }
+    InvalidateRect(hwnd, &rect, FALSE);
+}
+
+void InvalidateWinningCandidatesArea(HWND hwnd)
+{
+    const RECT rect = CandidateInvalidateRect();
     InvalidateRect(hwnd, &rect, FALSE);
 }
 
@@ -646,6 +1151,16 @@ Gdiplus::Rect SelectionDrawRect(std::size_t index)
         static_cast<INT>(selectionRect.bottom - selectionRect.top));
 }
 
+Gdiplus::Rect OpenMeldSelectionDrawRect(std::size_t index)
+{
+    RECT meldRect = OpenMeldRect(index);
+    return Gdiplus::Rect(
+        static_cast<INT>(meldRect.left - SelectionPadding),
+        static_cast<INT>(meldRect.top - SelectionPadding),
+        static_cast<INT>(meldRect.right - meldRect.left + SelectionPadding * 2),
+        static_cast<INT>(meldRect.bottom - meldRect.top + SelectionPadding * 2));
+}
+
 void DrawSelectionFrame(Gdiplus::Graphics& graphics, std::size_t index)
 {
     graphics.SetSmoothingMode(Gdiplus::SmoothingModeNone);
@@ -656,6 +1171,15 @@ void DrawSelectionFrame(Gdiplus::Graphics& graphics, std::size_t index)
     Gdiplus::Rect drawRect = SelectionDrawRect(index);
 
     graphics.DrawRectangle(&selectedPen, drawRect);
+}
+
+void DrawOpenMeldSelectionFrame(Gdiplus::Graphics& graphics, std::size_t index)
+{
+    graphics.SetSmoothingMode(Gdiplus::SmoothingModeNone);
+    Gdiplus::Pen selectedPen(
+        Gdiplus::Color(255, 255, 218, 72),
+        static_cast<Gdiplus::REAL>(SelectionPenWidth));
+    graphics.DrawRectangle(&selectedPen, OpenMeldSelectionDrawRect(index));
 }
 
 void DrawTsumoFrame(Gdiplus::Graphics& graphics)
@@ -828,6 +1352,46 @@ void DrawTsumoRonButton(Gdiplus::Graphics& graphics)
         static_cast<Gdiplus::REAL>(rect.bottom - rect.top)), &format, &textBrush);
 }
 
+void DrawCommandButton(Gdiplus::Graphics& graphics, const RECT& rect, const wchar_t* label, bool enabled)
+{
+    Gdiplus::Rect buttonRect(
+        rect.left,
+        rect.top,
+        rect.right - rect.left,
+        rect.bottom - rect.top);
+
+    Gdiplus::SolidBrush buttonBrush(enabled
+        ? Gdiplus::Color(255, 238, 244, 240)
+        : Gdiplus::Color(255, 185, 195, 188));
+    Gdiplus::Pen borderPen(enabled
+        ? Gdiplus::Color(255, 34, 86, 58)
+        : Gdiplus::Color(255, 115, 130, 120), 2.0f);
+    graphics.FillRectangle(&buttonBrush, buttonRect);
+    graphics.DrawRectangle(&borderPen, buttonRect);
+
+    Gdiplus::FontFamily fontFamily(L"Yu Gothic UI");
+    Gdiplus::Font font(&fontFamily, 14.0f, Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
+    Gdiplus::SolidBrush textBrush(enabled
+        ? Gdiplus::Color(255, 20, 60, 40)
+        : Gdiplus::Color(255, 95, 105, 100));
+    Gdiplus::StringFormat format;
+    format.SetAlignment(Gdiplus::StringAlignmentCenter);
+    format.SetLineAlignment(Gdiplus::StringAlignmentCenter);
+    graphics.DrawString(label, -1, &font, Gdiplus::RectF(
+        static_cast<Gdiplus::REAL>(rect.left),
+        static_cast<Gdiplus::REAL>(rect.top),
+        static_cast<Gdiplus::REAL>(rect.right - rect.left),
+        static_cast<Gdiplus::REAL>(rect.bottom - rect.top)), &format, &textBrush);
+}
+
+void DrawMeldButtons(Gdiplus::Graphics& graphics)
+{
+    DrawCommandButton(graphics, ChiButtonRect(), L"チー", g_meldButtons.canChi);
+    DrawCommandButton(graphics, PonButtonRect(), L"ポン", g_meldButtons.canPon);
+    DrawCommandButton(graphics, KanButtonRect(), L"カン", g_meldButtons.canKan);
+    DrawCommandButton(graphics, ReturnMeldButtonRect(), L"戻す", g_meldButtons.canReturn);
+}
+
 void DrawInvalidTileOverlay(Gdiplus::Graphics& graphics)
 {
     if (!g_invalidTileSelection || g_selectedTile >= g_tileImages.size()) {
@@ -883,6 +1447,28 @@ void DrawWinningCandidates(Gdiplus::Graphics& graphics)
     }
 }
 
+void DrawOpenMelds(Gdiplus::Graphics& graphics)
+{
+    for (std::size_t meldIndex = 0; meldIndex < g_openMeldImages.size(); ++meldIndex) {
+        int x = OpenMeldLeft(meldIndex);
+        const int y = TileTop();
+        for (const TileImage& tileImage : g_openMeldImages[meldIndex].tiles) {
+            const SIZE tileSize = TileDrawSize(tileImage);
+            if (tileImage.image && tileImage.image->GetLastStatus() == Gdiplus::Ok) {
+                graphics.DrawImage(tileImage.image.get(), x, y);
+            }
+            else {
+                DrawMissingTile(graphics, x, y, tileImage.fileName);
+            }
+            x += tileSize.cx + CandidateGap;
+        }
+
+        if (g_selectionArea == SelectionArea::OpenMeld && meldIndex == g_selectedMeld) {
+            DrawOpenMeldSelectionFrame(graphics, meldIndex);
+        }
+    }
+}
+
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch (message) {
@@ -902,13 +1488,14 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
         DrawYakuText(graphics);
         DrawSortButton(graphics);
         DrawTsumoRonButton(graphics);
+        DrawMeldButtons(graphics);
 
         for (std::size_t i = 0; i < g_tileImages.size(); ++i) {
             const TileImage& tileImage = g_tileImages[i];
             const SIZE tileSize = TileDrawSize(tileImage);
             const int x = TileLeft(i);
 
-            if (i == g_selectedTile) {
+            if (g_selectionArea == SelectionArea::HandTile && i == g_selectedTile) {
                 DrawSelectionFrame(graphics, i);
             }
 
@@ -923,6 +1510,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
         DrawTsumoLabel(graphics);
         DrawTsumoFrame(graphics);
         DrawInvalidTileOverlay(graphics);
+        DrawOpenMelds(graphics);
         DrawWinningCandidates(graphics);
 
         EndPaint(hwnd, &paint);
@@ -933,26 +1521,36 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
     case WM_KEYDOWN:
         switch (wParam) {
         case VK_LEFT: {
-            if (g_invalidTileSelection) {
+            if (g_invalidTileSelection && g_selectionArea == SelectionArea::HandTile) {
                 return 0;
             }
-            const std::size_t oldSelectedTile = g_selectedTile;
+            const SelectionArea oldSelectionArea = g_selectionArea;
+            const std::size_t oldSelectionIndex = g_selectionArea == SelectionArea::HandTile ? g_selectedTile : g_selectedMeld;
             MoveSelectedTile(-1);
-            MoveSelectionFrame(hwnd, oldSelectedTile, g_selectedTile);
+            const std::size_t newSelectionIndex = g_selectionArea == SelectionArea::HandTile ? g_selectedTile : g_selectedMeld;
+            InvalidateSelectionArea(hwnd, oldSelectionArea, oldSelectionIndex);
+            InvalidateSelectionArea(hwnd, g_selectionArea, newSelectionIndex);
+            InvalidateMeldButtonArea(hwnd);
             return 0;
         }
         case VK_RIGHT: {
-            if (g_invalidTileSelection) {
+            if (g_invalidTileSelection && g_selectionArea == SelectionArea::HandTile) {
                 return 0;
             }
-            const std::size_t oldSelectedTile = g_selectedTile;
+            const SelectionArea oldSelectionArea = g_selectionArea;
+            const std::size_t oldSelectionIndex = g_selectionArea == SelectionArea::HandTile ? g_selectedTile : g_selectedMeld;
             MoveSelectedTile(1);
-            MoveSelectionFrame(hwnd, oldSelectedTile, g_selectedTile);
+            const std::size_t newSelectionIndex = g_selectionArea == SelectionArea::HandTile ? g_selectedTile : g_selectedMeld;
+            InvalidateSelectionArea(hwnd, oldSelectionArea, oldSelectionIndex);
+            InvalidateSelectionArea(hwnd, g_selectionArea, newSelectionIndex);
+            InvalidateMeldButtonArea(hwnd);
             return 0;
         }
         case VK_UP:
         {
-            const RECT oldCandidateArea = CandidateAreaRect();
+            if (g_selectionArea != SelectionArea::HandTile) {
+                return 0;
+            }
             if (GetKeyState(VK_SHIFT) & 0x8000) {
                 ChangeSelectedTileSuit(1);
             }
@@ -963,14 +1561,16 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
             UpdateYakuText();
             UpdateShantenText();
             InvalidateYakuTextArea(hwnd);
+            InvalidateCommandButtonArea(hwnd);
             InvalidateTile(hwnd, g_selectedTile);
-            InvalidateCandidateArea(hwnd, oldCandidateArea);
-            InvalidateCandidateArea(hwnd, CandidateAreaRect());
+            InvalidateWinningCandidatesArea(hwnd);
             return 0;
         }
         case VK_DOWN:
         {
-            const RECT oldCandidateArea = CandidateAreaRect();
+            if (g_selectionArea != SelectionArea::HandTile) {
+                return 0;
+            }
             if (GetKeyState(VK_SHIFT) & 0x8000) {
                 ChangeSelectedTileSuit(-1);
             }
@@ -981,9 +1581,9 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
             UpdateYakuText();
             UpdateShantenText();
             InvalidateYakuTextArea(hwnd);
+            InvalidateCommandButtonArea(hwnd);
             InvalidateTile(hwnd, g_selectedTile);
-            InvalidateCandidateArea(hwnd, oldCandidateArea);
-            InvalidateCandidateArea(hwnd, CandidateAreaRect());
+            InvalidateWinningCandidatesArea(hwnd);
             return 0;
         }
         default:
@@ -998,6 +1598,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
             LoadTileImages(g_hand);
             UpdateWinningTileFromHand();
             UpdateInvalidTileSelection();
+            UpdateMeldButtonState();
             UpdateWinningCandidates();
             UpdateYakuText();
             UpdateShantenText();
@@ -1008,10 +1609,35 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
             g_tsumoRonLabelTouched = true;
             g_isRonTile = !g_isRonTile;
             UpdateWinningTileFromHand();
+            UpdateMeldButtonState();
             UpdateWinningCandidates();
             UpdateYakuText();
             UpdateShantenText();
             InvalidateRect(hwnd, nullptr, FALSE);
+            return 0;
+        }
+        if (IsPointInRect(ChiButtonRect(), x, y)) {
+            if (g_meldButtons.canChi && MakeChiMeld()) {
+                RefreshAfterHandStructureChanged(hwnd);
+            }
+            return 0;
+        }
+        if (IsPointInRect(PonButtonRect(), x, y)) {
+            if (g_meldButtons.canPon && MakeSameTileMeld(OpenMeldType::Pon, 3)) {
+                RefreshAfterHandStructureChanged(hwnd);
+            }
+            return 0;
+        }
+        if (IsPointInRect(KanButtonRect(), x, y)) {
+            if (g_meldButtons.canKan && MakeSameTileMeld(OpenMeldType::Kan, 4)) {
+                RefreshAfterHandStructureChanged(hwnd);
+            }
+            return 0;
+        }
+        if (IsPointInRect(ReturnMeldButtonRect(), x, y)) {
+            if (g_meldButtons.canReturn && ReturnSelectedMeld()) {
+                RefreshAfterHandStructureChanged(hwnd);
+            }
             return 0;
         }
         break;
@@ -1036,12 +1662,19 @@ int ShowHandWindow(HINSTANCE instance, std::vector<mahjong::Tile> hand, const ma
 
     g_hand = std::move(hand);
     g_context = context;
+    g_baseContext = context;
+    g_openMelds.clear();
+    g_openMeldImages.clear();
+    g_selectionArea = SelectionArea::HandTile;
     g_selectedTile = 0;
+    g_selectedMeld = 0;
     g_isRonTile = false;
     g_tsumoRonLabelTouched = false;
     LoadTileImages(g_hand);
+    LoadOpenMeldImages();
     UpdateWinningTileFromHand();
     UpdateInvalidTileSelection();
+    UpdateMeldButtonState();
     UpdateWinningCandidates();
     UpdateYakuText();
     UpdateShantenText();
@@ -1088,13 +1721,18 @@ int ShowHandWindow(HINSTANCE instance, std::vector<mahjong::Tile> hand, const ma
 
     g_tileImages.clear();
     g_candidateImages.clear();
+    g_openMeldImages.clear();
     g_hand.clear();
+    g_openMelds.clear();
     g_winningCandidates.clear();
     g_yakuText.clear();
     g_shantenText.clear();
+    g_meldButtons = {};
     g_invalidTileSelection = false;
     g_isRonTile = false;
     g_tsumoRonLabelTouched = false;
+    g_selectionArea = SelectionArea::HandTile;
+    g_selectedMeld = 0;
     Gdiplus::GdiplusShutdown(g_gdiplusToken);
     return static_cast<int>(message.wParam);
 }

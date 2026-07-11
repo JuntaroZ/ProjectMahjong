@@ -17,6 +17,7 @@ struct Meld {
 
     Type type;
     int tile;
+    bool open{ false };
 };
 
 struct Decomposition {

@@ -22,18 +22,29 @@ int TileIndex(const Tile& tile)
 bool HasTriplet(const Decomposition& hand, int tile)
 {
     for (const Meld& meld : hand.melds) {
-        if (meld.type == Meld::Type::Triplet && meld.tile == tile) {
+        if (!meld.open && meld.type == Meld::Type::Triplet && meld.tile == tile) {
             return true;
         }
     }
     return false;
 }
 
+int CountConcealedTriplets(const Decomposition& hand)
+{
+    int count = 0;
+    for (const Meld& meld : hand.melds) {
+        if (!meld.open && meld.type == Meld::Type::Triplet) {
+            ++count;
+        }
+    }
+    return count;
+}
+
 } // namespace
 
 void SuuankouRule::Evaluate(const HandAnalysis&, const Decomposition* hand, const HandContext& context, std::vector<Yaku>& yaku) const
 {
-    if (hand == nullptr || CountTriplets(*hand) < 4) {
+    if (hand == nullptr || CountConcealedTriplets(*hand) < 4) {
         return;
     }
 

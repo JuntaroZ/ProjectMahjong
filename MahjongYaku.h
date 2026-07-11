@@ -42,6 +42,23 @@ struct HandContext {
     bool isChiho{ false };
 };
 
+enum class MeldType {
+    Sequence,
+    Triplet,
+    Quad
+};
+
+struct OpenMeld {
+    MeldType type;
+    std::vector<Tile> tiles;
+};
+
+struct HandState {
+    std::vector<Tile> closedTiles;
+    std::vector<OpenMeld> openMelds;
+    HandContext context;
+};
+
 struct Yaku {
     std::string name;
     int han;
@@ -75,15 +92,21 @@ Tile Sou(int rank);
 Tile Honor(int rank);
 
 YakuResult EvaluateYaku(const std::vector<Tile>& closedTiles, const HandContext& context);
+YakuResult EvaluateYaku(const HandState& handState);
 YakuResult EvaluateCurrentYaku(const std::vector<Tile>& closedTiles, const HandContext& context);
+YakuResult EvaluateCurrentYaku(const HandState& handState);
 std::vector<Tile> AllTileKinds();
 int CountTile(const std::vector<Tile>& tiles, const Tile& target);
 bool HasInvalidTileCount(const std::vector<Tile>& tiles);
 int CalculateShanten(const std::vector<Tile>& tiles);
+int CalculateShanten(const HandState& handState);
 std::vector<Tile> FindWinningCandidates(const std::vector<Tile>& hand, const HandContext& context);
+std::vector<Tile> FindWinningCandidates(const HandState& handState);
 std::vector<Yaku> EvaluateDisplayYaku(const std::vector<Tile>& hand, const HandContext& context, const std::vector<Tile>& winningCandidates);
+std::vector<Yaku> EvaluateDisplayYaku(const HandState& handState, const std::vector<Tile>& winningCandidates);
 std::vector<YakuScore> CalculateDisplayYakuScores(const std::vector<Yaku>& yaku, const HandContext& context);
 HandViewAnalysis AnalyzeHandView(const std::vector<Tile>& hand, const HandContext& context);
+HandViewAnalysis AnalyzeHandView(const HandState& handState);
 std::string TileToString(const Tile& tile);
 
 } // namespace mahjong

@@ -345,6 +345,32 @@ Tile Honor(int rank);</code></pre>
         </table>
       </section>
 
+      <section id="meld-state">
+        <h2>鳴き（なき）面子（めんつ）を含む手牌（てはい）</h2>
+        <pre><code>enum class MeldType {
+    Sequence,
+    Triplet,
+    Quad
+};
+
+struct OpenMeld {
+    MeldType type;
+    std::vector&lt;Tile&gt; tiles;
+};
+
+struct HandState {
+    std::vector&lt;Tile&gt; closedTiles;
+    std::vector&lt;OpenMeld&gt; openMelds;
+    HandContext context;
+};</code></pre>
+        <ul>
+          <li><code>closedTiles</code> は手牌（てはい）側に残っている牌です。14牌目をツモ・ロン牌として扱う場合は最後に入れます。</li>
+          <li><code>openMelds</code> はチー、ポン、カンで固定された面子（めんつ）です。順子（しゅんつ）、刻子（こーつ）、槓子（かんつ）を区別します。</li>
+          <li>鳴き面子（めんつ）がある場合、判定時は門前（めんぜん）ではないものとして扱います。</li>
+          <li>開いた刻子（こーつ）や槓子（かんつ）は、対々和（といといほう）や役牌（やくはい）では面子として数えますが、三暗刻（さんあんこう）・四暗刻（すーあんこう）の暗刻（あんこ）数には含めません。</li>
+        </ul>
+      </section>
+
       <section id="types">
         <h2>役関連の型</h2>
         <h3>Yaku</h3>
@@ -395,6 +421,7 @@ Tile Honor(int rank);</code></pre>
         <h2>公開 API</h2>
         <h3>EvaluateYaku</h3>
         <pre><code>YakuResult EvaluateYaku(const std::vector&lt;Tile&gt;&amp; closedTiles, const HandContext&amp; context);</code></pre>
+        <pre><code>YakuResult EvaluateYaku(const HandState&amp; handState);</code></pre>
         <ul>
           <li>14牌の和了（ほうら）形判定と役判定を行います。</li>
           <li>14牌以外の場合は <code>std::invalid_argument</code> を送出します。</li>
@@ -404,14 +431,17 @@ Tile Honor(int rank);</code></pre>
 
         <h3>EvaluateCurrentYaku</h3>
         <pre><code>YakuResult EvaluateCurrentYaku(const std::vector&lt;Tile&gt;&amp; closedTiles, const HandContext&amp; context);</code></pre>
+        <pre><code>YakuResult EvaluateCurrentYaku(const HandState&amp; handState);</code></pre>
         <p>現在の14牌に対して、和了（ほうら）形でなくても成立し得る表示用役を評価します。</p>
 
         <h3>CalculateShanten</h3>
         <pre><code>int CalculateShanten(const std::vector&lt;Tile&gt;&amp; tiles);</code></pre>
+        <pre><code>int CalculateShanten(const HandState&amp; handState);</code></pre>
         <p>通常形、七対子（ちーといつ）、国士無双（こくしむそう）のシャンテン数を計算し、最小値を返します。</p>
 
         <h3>FindWinningCandidates</h3>
         <pre><code>std::vector&lt;Tile&gt; FindWinningCandidates(const std::vector&lt;Tile&gt;&amp; hand, const HandContext&amp; context);</code></pre>
+        <pre><code>std::vector&lt;Tile&gt; FindWinningCandidates(const HandState&amp; handState);</code></pre>
         <ul>
           <li>14牌の最後の1牌をツモ／ロン牌として扱い、残り13牌に対する和了（ほうら）候補を列挙します。</li>
           <li>すでに4枚使われている牌は候補に含めません。</li>
@@ -422,6 +452,9 @@ Tile Honor(int rank);</code></pre>
         <pre><code>std::vector&lt;Yaku&gt; EvaluateDisplayYaku(
     const std::vector&lt;Tile&gt;&amp; hand,
     const HandContext&amp; context,
+    const std::vector&lt;Tile&gt;&amp; winningCandidates);</code></pre>
+        <pre><code>std::vector&lt;Yaku&gt; EvaluateDisplayYaku(
+    const HandState&amp; handState,
     const std::vector&lt;Tile&gt;&amp; winningCandidates);</code></pre>
         <ul>
           <li>画面表示向けの役一覧を生成します。</li>
@@ -459,6 +492,7 @@ Tile Honor(int rank);</code></pre>
         <pre><code>HandViewAnalysis AnalyzeHandView(
     const std::vector&lt;Tile&gt;&amp; hand,
     const HandContext&amp; context);</code></pre>
+        <pre><code>HandViewAnalysis AnalyzeHandView(const HandState&amp; handState);</code></pre>
         <p>手牌（てはい）画面用の総合解析を行います。同一牌5枚以上の検出、シャンテン計算、和了（ほうら）形判定、和了（ほうら）候補探索、表示用役一覧生成をまとめて行います。</p>
 
         <h3>その他</h3>
@@ -563,12 +597,12 @@ Tile Honor(int rank);</code></pre>
       <section id="limits">
         <h2>制限事項</h2>
         <ul>
-          <li>現在の公開 API は基本的に閉じた手牌（てはい）ベースです。</li>
-          <li>鳴き（なき）面子（めんつ）を外部から明示的に渡す API はありません。</li>
+          <li>公開 API は閉じた手牌（てはい）だけでなく、<code>HandState</code> により鳴き（なき）面子（めんつ）も渡せます。</li>
+          <li>鳴き（なき）面子（めんつ）は順子（しゅんつ）、刻子（こーつ）、槓子（かんつ）として扱います。ただし明槓（みんかん）、暗槓（あんかん）、加槓（かかん）の細分化は未対応です。</li>
           <li>ドラ、赤ドラ、裏ドラ、場棒、本場は未対応です。</li>
           <li>点数計算の符は簡易仕様です。</li>
           <li>ダブル役満（やくまん）、数え役満（かぞえやくまん）の細かい扱いは未整備です。</li>
-          <li>四槓子（すーかんつ）は槓（かん）情報を保持するデータ構造がないため未対応です。</li>
+          <li>四槓子（すーかんつ）は槓（かん）の種類や局進行情報を含む詳細データが不足しているため未対応です。</li>
           <li>流し満貫（ながしまんがん）、人和（れんほう）など、局進行情報が必要な役は未対応です。</li>
           <li>役判定は現在実装済みの役に限定されます。</li>
         </ul>
@@ -577,7 +611,8 @@ Tile Honor(int rank);</code></pre>
       <section id="remaining">
         <h2>残課題</h2>
         <ul>
-          <li>鳴き（なき）の処理は未対応です。チー、ポン、明槓（みんかん）、暗槓（あんかん）、加槓（かかん）などの面子（めんつ）情報を保持するデータ構造と、それを使った役判定 API の追加が必要です。</li>
+          <li>鳴き（なき）の基本操作は画面側で対応済みです。選択牌からチー、ポン、カンを作成し、鳴き面子（めんつ）を選択して戻せます。</li>
+          <li>鳴き（なき）面子（めんつ）の基本 API は対応済みです。次の課題は、明槓（みんかん）、暗槓（あんかん）、加槓（かかん）を区別して扱うことです。</li>
           <li>ドラ関連は未対応です。ドラ、裏ドラ（うらどら）、赤ドラ、槓ドラ（かんどら）、槓裏ドラ（かんうらどら）を扱うための牌情報と局情報が必要です。</li>
           <li>点数計算は完全対応ではありません。詳細な符計算、親子、ロン、ツモ、本場（ほんば）、供託（きょうたく）リーチ棒、切り上げ満貫（まんがん）などの対応が必要です。</li>
           <li>役満（やくまん）の扱いは拡張余地があります。ダブル役満、複合役満、数え役満（かぞえやくまん）のルール設定が必要です。</li>

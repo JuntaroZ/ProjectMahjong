@@ -132,6 +132,186 @@ int KokushiShanten(const std::array<int, 34>& counts)
     return 13 - kinds - (hasPair ? 1 : 0);
 }
 
+std::vector<Tile> AllTiles(const HandState& handState)
+{
+    std::vector<Tile> tiles = handState.closedTiles;
+    for (const OpenMeld& meld : handState.openMelds) {
+        tiles.insert(tiles.end(), meld.tiles.begin(), meld.tiles.end());
+    }
+    return tiles;
+}
+
+HandContext ContextForState(const HandState& handState)
+{
+    HandContext context = handState.context;
+    if (!handState.closedTiles.empty()) {
+        context.winningTile = handState.closedTiles.back();
+    }
+    if (!handState.openMelds.empty()) {
+        context.isClosed = false;
+    }
+    return context;
+}
+
+bool IsSameTileGroup(const std::vector<Tile>& tiles, std::size_t minSize)
+{
+    if (tiles.size() < minSize || tiles.empty()) {
+        return false;
+    }
+    return std::all_of(tiles.begin(), tiles.end(), [&tiles](const Tile& tile) {
+        return tile == tiles.front();
+    });
+}
+
+int SequenceStartTileIndex(const std::vector<Tile>& tiles)
+{
+    if (tiles.size() != 3) {
+        return -1;
+    }
+
+    std::vector<Tile> sorted = tiles;
+    std::sort(sorted.begin(), sorted.end(), [](const Tile& left, const Tile& right) {
+        return TileKindIndex(left) < TileKindIndex(right);
+    });
+
+    if (sorted[0].suit == Suit::Honor || sorted[0].suit != sorted[1].suit || sorted[1].suit != sorted[2].suit) {
+        return -1;
+    }
+    if (sorted[0].rank + 1 != sorted[1].rank || sorted[1].rank + 1 != sorted[2].rank) {
+        return -1;
+    }
+
+    return TileKindIndex(sorted[0]);
+}
+
+std::vector<internal::Meld> FixedMeldsForState(const HandState& handState)
+{
+    std::vector<internal::Meld> melds;
+    melds.reserve(handState.openMelds.size());
+
+    for (const OpenMeld& openMeld : handState.openMelds) {
+        switch (openMeld.type) {
+        case MeldType::Sequence: {
+            const int startIndex = SequenceStartTileIndex(openMeld.tiles);
+            if (startIndex < 0) {
+                throw std::invalid_argument("Invalid open sequence.");
+            }
+            melds.push_back({ internal::Meld::Type::Sequence, startIndex, true });
+            break;
+        }
+        case MeldType::Triplet:
+            if (!IsSameTileGroup(openMeld.tiles, 3)) {
+                throw std::invalid_argument("Invalid open triplet.");
+            }
+            melds.push_back({ internal::Meld::Type::Triplet, TileKindIndex(openMeld.tiles.front()), true });
+            break;
+        case MeldType::Quad:
+            if (!IsSameTileGroup(openMeld.tiles, 4)) {
+                throw std::invalid_argument("Invalid open quad.");
+            }
+            melds.push_back({ internal::Meld::Type::Triplet, TileKindIndex(openMeld.tiles.front()), true });
+            break;
+        }
+    }
+
+    return melds;
+}
+
+void FindClosedMelds(std::array<int, 34>& counts, int neededMelds, std::vector<internal::Meld>& current, std::vector<std::vector<internal::Meld>>& results)
+{
+    if (neededMelds == 0) {
+        if (std::all_of(counts.begin(), counts.end(), [](int count) { return count == 0; })) {
+            results.push_back(current);
+        }
+        return;
+    }
+
+    int index = 0;
+    while (index < 34 && counts[index] == 0) {
+        ++index;
+    }
+    if (index >= 34) {
+        return;
+    }
+
+    if (counts[index] >= 3) {
+        counts[index] -= 3;
+        current.push_back({ internal::Meld::Type::Triplet, index });
+        FindClosedMelds(counts, neededMelds - 1, current, results);
+        current.pop_back();
+        counts[index] += 3;
+    }
+
+    if (index < 27 && index % 9 <= 6 && counts[index + 1] > 0 && counts[index + 2] > 0) {
+        --counts[index];
+        --counts[index + 1];
+        --counts[index + 2];
+        current.push_back({ internal::Meld::Type::Sequence, index });
+        FindClosedMelds(counts, neededMelds - 1, current, results);
+        current.pop_back();
+        ++counts[index];
+        ++counts[index + 1];
+        ++counts[index + 2];
+    }
+}
+
+internal::HandAnalysis AnalyzeHandState(const HandState& handState)
+{
+    using namespace internal;
+
+    const std::vector<Tile> allTiles = AllTiles(handState);
+    if (allTiles.size() != 14 || HasInvalidTileCount(allTiles)) {
+        throw std::invalid_argument("Hand analysis requires exactly 14 valid tiles.");
+    }
+    if (handState.openMelds.empty()) {
+        return AnalyzeHand(handState.closedTiles);
+    }
+
+    const std::vector<Meld> fixedMelds = FixedMeldsForState(handState);
+    if (fixedMelds.size() > 4) {
+        throw std::invalid_argument("Too many open melds.");
+    }
+
+    HandAnalysis analysis;
+    analysis.counts = TileCounts(allTiles);
+
+    const int neededMelds = 4 - static_cast<int>(fixedMelds.size());
+    if (handState.closedTiles.size() != static_cast<std::size_t>(neededMelds * 3 + 2)) {
+        return analysis;
+    }
+
+    std::array<int, 34> closedCounts = TileCounts(handState.closedTiles);
+    for (int pair = 0; pair < 34; ++pair) {
+        if (closedCounts[pair] < 2) {
+            continue;
+        }
+
+        closedCounts[pair] -= 2;
+        std::vector<Meld> current;
+        std::vector<std::vector<Meld>> closedMelds;
+        FindClosedMelds(closedCounts, neededMelds, current, closedMelds);
+        closedCounts[pair] += 2;
+
+        for (const std::vector<Meld>& melds : closedMelds) {
+            Decomposition decomposition;
+            decomposition.pairTile = pair;
+            decomposition.melds = fixedMelds;
+            decomposition.melds.insert(decomposition.melds.end(), melds.begin(), melds.end());
+            analysis.standardHands.push_back(std::move(decomposition));
+        }
+    }
+
+    return analysis;
+}
+
+int StandardShantenForState(const HandState& handState)
+{
+    std::array<int, 34> counts = TileCounts(handState.closedTiles);
+    int best = 8;
+    SearchStandardShanten(counts, 0, static_cast<int>(handState.openMelds.size()), 0, 0, best);
+    return best;
+}
+
 void AddDisplayYakuName(std::vector<Yaku>& yaku, const Yaku& item)
 {
     if (item.name == u8"立直") {
@@ -261,13 +441,19 @@ Tile Honor(int rank)
 
 YakuResult EvaluateYaku(const std::vector<Tile>& closedTiles, const HandContext& context)
 {
+    return EvaluateYaku(HandState{ closedTiles, {}, context });
+}
+
+YakuResult EvaluateYaku(const HandState& handState)
+{
     using namespace internal;
 
-    if (closedTiles.size() != 14) {
+    if (AllTiles(handState).size() != 14) {
         throw std::invalid_argument("EvaluateYaku requires exactly 14 tiles.");
     }
 
-    const HandAnalysis analysis = AnalyzeHand(closedTiles);
+    const HandContext context = ContextForState(handState);
+    const HandAnalysis analysis = AnalyzeHandState(handState);
     YakuResult result;
     result.validWinningShape = !analysis.standardHands.empty() || analysis.sevenPairs || analysis.kokushi;
     if (!result.validWinningShape) {
@@ -303,13 +489,19 @@ YakuResult EvaluateYaku(const std::vector<Tile>& closedTiles, const HandContext&
 
 YakuResult EvaluateCurrentYaku(const std::vector<Tile>& closedTiles, const HandContext& context)
 {
+    return EvaluateCurrentYaku(HandState{ closedTiles, {}, context });
+}
+
+YakuResult EvaluateCurrentYaku(const HandState& handState)
+{
     using namespace internal;
 
-    if (closedTiles.size() != 14) {
+    if (AllTiles(handState).size() != 14) {
         throw std::invalid_argument("EvaluateCurrentYaku requires exactly 14 tiles.");
     }
 
-    const HandAnalysis analysis = AnalyzeHand(closedTiles);
+    const HandContext context = ContextForState(handState);
+    const HandAnalysis analysis = AnalyzeHandState(handState);
     YakuResult result;
     result.validWinningShape = !analysis.standardHands.empty() || analysis.sevenPairs || analysis.kokushi;
 
@@ -374,27 +566,46 @@ int CalculateShanten(const std::vector<Tile>& tiles)
     return std::min({ StandardShanten(counts), SevenPairsShanten(counts), KokushiShanten(counts) });
 }
 
+int CalculateShanten(const HandState& handState)
+{
+    const std::vector<Tile> allTiles = AllTiles(handState);
+    if (handState.openMelds.empty()) {
+        return CalculateShanten(allTiles);
+    }
+    return StandardShantenForState(handState);
+}
+
 std::vector<Tile> FindWinningCandidates(const std::vector<Tile>& hand, const HandContext& context)
 {
+    return FindWinningCandidates(HandState{ hand, {}, context });
+}
+
+std::vector<Tile> FindWinningCandidates(const HandState& handState)
+{
     std::vector<Tile> winningCandidates;
-    if (hand.size() != 14 || HasInvalidTileCount(hand)) {
+    const std::vector<Tile> allTiles = AllTiles(handState);
+    if (allTiles.size() != 14 || HasInvalidTileCount(allTiles) || handState.closedTiles.empty()) {
         return winningCandidates;
     }
 
-    const std::vector<Tile> baseHand(hand.begin(), hand.end() - 1);
+    const std::vector<Tile> baseClosedTiles(handState.closedTiles.begin(), handState.closedTiles.end() - 1);
     for (const Tile& candidate : AllTileKinds()) {
-        if (CountTile(baseHand, candidate) >= 4) {
+        std::vector<Tile> baseAllTiles = baseClosedTiles;
+        for (const OpenMeld& meld : handState.openMelds) {
+            baseAllTiles.insert(baseAllTiles.end(), meld.tiles.begin(), meld.tiles.end());
+        }
+        if (CountTile(baseAllTiles, candidate) >= 4) {
             continue;
         }
 
-        std::vector<Tile> testHand = baseHand;
-        testHand.push_back(candidate);
+        HandState testState = handState;
+        testState.closedTiles = baseClosedTiles;
+        testState.closedTiles.push_back(candidate);
 
-        HandContext candidateContext = context;
-        candidateContext.winningTile = candidate;
+        testState.context.winningTile = candidate;
 
         try {
-            const YakuResult result = EvaluateYaku(testHand, candidateContext);
+            const YakuResult result = EvaluateYaku(testState);
             if (result.validWinningShape) {
                 winningCandidates.push_back(candidate);
             }
@@ -408,15 +619,16 @@ std::vector<Tile> FindWinningCandidates(const std::vector<Tile>& hand, const Han
 
 std::vector<Yaku> EvaluateDisplayYaku(const std::vector<Tile>& hand, const HandContext& context, const std::vector<Tile>& winningCandidates)
 {
+    return EvaluateDisplayYaku(HandState{ hand, {}, context }, winningCandidates);
+}
+
+std::vector<Yaku> EvaluateDisplayYaku(const HandState& handState, const std::vector<Tile>& winningCandidates)
+{
     std::vector<Yaku> yaku;
+    const std::vector<Tile> allTiles = AllTiles(handState);
 
     try {
-        HandContext currentContext = context;
-        if (!hand.empty()) {
-            currentContext.winningTile = hand.back();
-        }
-
-        const YakuResult currentResult = EvaluateYaku(hand, currentContext);
+        const YakuResult currentResult = EvaluateYaku(handState);
         if (currentResult.validWinningShape) {
             AddYakuResultNames(yaku, currentResult);
             return yaku;
@@ -425,17 +637,16 @@ std::vector<Yaku> EvaluateDisplayYaku(const std::vector<Tile>& hand, const HandC
     catch (...) {
     }
 
-    if (context.isRiichi && hand.size() == 14) {
-        const std::vector<Tile> baseHand(hand.begin(), hand.end() - 1);
+    if (handState.context.isRiichi && allTiles.size() == 14 && !handState.closedTiles.empty()) {
+        const std::vector<Tile> baseClosedTiles(handState.closedTiles.begin(), handState.closedTiles.end() - 1);
         for (const Tile& candidate : winningCandidates) {
-            std::vector<Tile> testHand = baseHand;
-            testHand.push_back(candidate);
-
-            HandContext candidateContext = context;
-            candidateContext.winningTile = candidate;
+            HandState testState = handState;
+            testState.closedTiles = baseClosedTiles;
+            testState.closedTiles.push_back(candidate);
+            testState.context.winningTile = candidate;
 
             try {
-                AddYakuResultNames(yaku, EvaluateYaku(testHand, candidateContext));
+                AddYakuResultNames(yaku, EvaluateYaku(testState));
             }
             catch (...) {
             }
@@ -443,11 +654,7 @@ std::vector<Yaku> EvaluateDisplayYaku(const std::vector<Tile>& hand, const HandC
     }
 
     try {
-        HandContext currentContext = context;
-        if (!hand.empty()) {
-            currentContext.winningTile = hand.back();
-        }
-        AddYakuResultNames(yaku, EvaluateCurrentYaku(hand, currentContext));
+        AddYakuResultNames(yaku, EvaluateCurrentYaku(handState));
     }
     catch (...) {
     }
@@ -473,36 +680,41 @@ std::vector<YakuScore> CalculateDisplayYakuScores(const std::vector<Yaku>& yaku,
 
 HandViewAnalysis AnalyzeHandView(const std::vector<Tile>& hand, const HandContext& context)
 {
+    return AnalyzeHandView(HandState{ hand, {}, context });
+}
+
+HandViewAnalysis AnalyzeHandView(const HandState& handState)
+{
     HandViewAnalysis analysis;
-    analysis.invalidTileCount = HasInvalidTileCount(hand);
+    const std::vector<Tile> allTiles = AllTiles(handState);
+    analysis.invalidTileCount = HasInvalidTileCount(allTiles);
     if (analysis.invalidTileCount) {
         return analysis;
     }
 
-    HandContext currentContext = context;
-    if (!hand.empty()) {
-        currentContext.winningTile = hand.back();
-    }
+    const HandContext currentContext = ContextForState(handState);
 
     try {
-        analysis.shanten = CalculateShanten(hand);
+        analysis.shanten = CalculateShanten(handState);
     }
     catch (...) {
         analysis.shanten = 8;
     }
 
     try {
-        const YakuResult currentResult = EvaluateYaku(hand, currentContext);
+        const YakuResult currentResult = EvaluateYaku(handState);
         analysis.winning = currentResult.validWinningShape;
     }
     catch (...) {
     }
 
-    if (context.isRiichi) {
-        analysis.winningCandidates = FindWinningCandidates(hand, context);
+    if (currentContext.isRiichi) {
+        analysis.winningCandidates = FindWinningCandidates(handState);
     }
     analysis.ready = !analysis.winningCandidates.empty();
-    analysis.yaku = EvaluateDisplayYaku(hand, currentContext, analysis.winningCandidates);
+    HandState currentState = handState;
+    currentState.context = currentContext;
+    analysis.yaku = EvaluateDisplayYaku(currentState, analysis.winningCandidates);
 
     if (analysis.winning) {
         analysis.riichiOnlyWin = analysis.yaku.empty();
