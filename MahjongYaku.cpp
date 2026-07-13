@@ -12,6 +12,8 @@
 namespace mahjong {
 namespace {
 
+bool g_riichiYakuEnabled = false;
+
 int TileKindIndex(const Tile& tile)
 {
     switch (tile.suit) {
@@ -141,13 +143,25 @@ std::vector<Tile> AllTiles(const HandState& handState)
     return tiles;
 }
 
+std::size_t EffectiveTileCount(const HandState& handState)
+{
+    std::size_t count = handState.closedTiles.size();
+    for (const OpenMeld& meld : handState.openMelds) {
+        count += (meld.type == MeldType::Quad || meld.type == MeldType::OpenQuad) ? 3 : meld.tiles.size();
+    }
+    return count;
+}
+
 HandContext ContextForState(const HandState& handState)
 {
     HandContext context = handState.context;
     if (!handState.closedTiles.empty()) {
         context.winningTile = handState.closedTiles.back();
     }
-    if (!handState.openMelds.empty()) {
+    const bool hasOpenMeld = std::any_of(handState.openMelds.begin(), handState.openMelds.end(), [](const OpenMeld& meld) {
+        return meld.type != MeldType::Quad;
+    });
+    if (hasOpenMeld) {
         context.isClosed = false;
     }
     return context;
@@ -209,6 +223,12 @@ std::vector<internal::Meld> FixedMeldsForState(const HandState& handState)
             if (!IsSameTileGroup(openMeld.tiles, 4)) {
                 throw std::invalid_argument("Invalid open quad.");
             }
+            melds.push_back({ internal::Meld::Type::Triplet, TileKindIndex(openMeld.tiles.front()), false });
+            break;
+        case MeldType::OpenQuad:
+            if (!IsSameTileGroup(openMeld.tiles, 4)) {
+                throw std::invalid_argument("Invalid open quad.");
+            }
             melds.push_back({ internal::Meld::Type::Triplet, TileKindIndex(openMeld.tiles.front()), true });
             break;
         }
@@ -260,7 +280,7 @@ internal::HandAnalysis AnalyzeHandState(const HandState& handState)
     using namespace internal;
 
     const std::vector<Tile> allTiles = AllTiles(handState);
-    if (allTiles.size() != 14 || HasInvalidTileCount(allTiles)) {
+    if (EffectiveTileCount(handState) != 14 || HasInvalidTileCount(allTiles)) {
         throw std::invalid_argument("Hand analysis requires exactly 14 valid tiles.");
     }
     if (handState.openMelds.empty()) {
@@ -330,6 +350,18 @@ void AddYakuResultNames(std::vector<Yaku>& yaku, const YakuResult& result)
     for (const Yaku& item : result.yaku) {
         AddDisplayYakuName(yaku, item);
     }
+}
+
+void AddRiichiYaku(std::vector<Yaku>& yaku, const HandContext& context)
+{
+    if (!g_riichiYakuEnabled || !context.isRiichi) {
+        return;
+    }
+
+    yaku.erase(std::remove_if(yaku.begin(), yaku.end(), [](const Yaku& item) {
+        return item.name == u8"立直";
+    }), yaku.end());
+    yaku.insert(yaku.begin(), { u8"立直", 1, false });
 }
 
 void AddUniqueYaku(std::vector<Yaku>& yaku, const Yaku& item)
@@ -448,7 +480,7 @@ YakuResult EvaluateYaku(const HandState& handState)
 {
     using namespace internal;
 
-    if (AllTiles(handState).size() != 14) {
+    if (EffectiveTileCount(handState) != 14) {
         throw std::invalid_argument("EvaluateYaku requires exactly 14 tiles.");
     }
 
@@ -496,7 +528,7 @@ YakuResult EvaluateCurrentYaku(const HandState& handState)
 {
     using namespace internal;
 
-    if (AllTiles(handState).size() != 14) {
+    if (EffectiveTileCount(handState) != 14) {
         throw std::invalid_argument("EvaluateCurrentYaku requires exactly 14 tiles.");
     }
 
@@ -525,6 +557,11 @@ YakuResult EvaluateCurrentYaku(const HandState& handState)
     }
 
     return result;
+}
+
+void SetRiichiYaku(bool enabled)
+{
+    g_riichiYakuEnabled = enabled;
 }
 
 std::vector<Tile> AllTileKinds()
@@ -560,6 +597,122 @@ bool HasInvalidTileCount(const std::vector<Tile>& tiles)
     return false;
 }
 
+bool IsKanMeldType(MeldType type)
+{
+    return type == MeldType::Quad || type == MeldType::OpenQuad;
+}
+
+bool IsSelectedCallableTile(const HandState& handState, std::size_t selectedTile)
+{
+    return selectedTile < handState.closedTiles.size()
+        && !(handState.closedTiles.size() >= 2 && selectedTile == handState.closedTiles.size() - 1);
+}
+
+int CountClosedTile(const HandState& handState, const Tile& target)
+{
+    return CountTile(handState.closedTiles, target);
+}
+
+bool RemoveTilesFromClosed(HandState& handState, const std::vector<Tile>& tiles)
+{
+    std::vector<bool> remove(handState.closedTiles.size(), false);
+    for (const Tile& tile : tiles) {
+        bool found = false;
+        for (std::size_t i = 0; i < handState.closedTiles.size(); ++i) {
+            if (!remove[i] && handState.closedTiles[i] == tile) {
+                remove[i] = true;
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            return false;
+        }
+    }
+
+    std::vector<Tile> remaining;
+    remaining.reserve(handState.closedTiles.size());
+    for (std::size_t i = 0; i < handState.closedTiles.size(); ++i) {
+        if (!remove[i]) {
+            remaining.push_back(handState.closedTiles[i]);
+        }
+    }
+    handState.closedTiles = std::move(remaining);
+    return true;
+}
+
+Tile FirstSelectableAddedTile(const HandState& handState)
+{
+    const std::vector<Tile> currentTiles = AllTiles(handState);
+    for (const Tile& tile : AllTileKinds()) {
+        if (CountTile(currentTiles, tile) < 4) {
+            return tile;
+        }
+    }
+    return Man(1);
+}
+
+bool MakeSequenceMeld(HandState& handState, std::size_t selectedTile)
+{
+    if (!CanChi(handState, selectedTile)) {
+        return false;
+    }
+
+    const Tile selected = handState.closedTiles[selectedTile];
+    for (int start = selected.rank; start >= selected.rank - 2; --start) {
+        if (start < 1 || start + 2 > 9) {
+            continue;
+        }
+
+        std::vector<Tile> tiles = {
+            { selected.suit, start },
+            { selected.suit, start + 1 },
+            { selected.suit, start + 2 }
+        };
+
+        bool possible = true;
+        for (const Tile& tile : tiles) {
+            if (CountClosedTile(handState, tile) < 1) {
+                possible = false;
+                break;
+            }
+        }
+
+        if (possible) {
+            if (!RemoveTilesFromClosed(handState, tiles)) {
+                return false;
+            }
+            handState.openMelds.push_back({ MeldType::Sequence, std::move(tiles) });
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool MakeSameTileMeld(HandState& handState, std::size_t selectedTile, MeldType type, int count)
+{
+    if (!IsSelectedCallableTile(handState, selectedTile)) {
+        return false;
+    }
+
+    const Tile selected = handState.closedTiles[selectedTile];
+    if (CountClosedTile(handState, selected) < count) {
+        return false;
+    }
+
+    std::vector<Tile> tiles(static_cast<std::size_t>(count), selected);
+    if (!RemoveTilesFromClosed(handState, tiles)) {
+        return false;
+    }
+
+    handState.openMelds.push_back({ type, tiles });
+    if (IsKanMeldType(type)) {
+        handState.closedTiles.push_back(FirstSelectableAddedTile(handState));
+    }
+    return true;
+}
+
 int CalculateShanten(const std::vector<Tile>& tiles)
 {
     const std::array<int, 34> counts = TileCounts(tiles);
@@ -575,6 +728,97 @@ int CalculateShanten(const HandState& handState)
     return StandardShantenForState(handState);
 }
 
+bool CanChi(const HandState& handState, std::size_t selectedTile)
+{
+    if (!IsSelectedCallableTile(handState, selectedTile)) {
+        return false;
+    }
+
+    const Tile selected = handState.closedTiles[selectedTile];
+    if (selected.suit == Suit::Honor) {
+        return false;
+    }
+
+    for (int start = selected.rank; start >= selected.rank - 2; --start) {
+        if (start < 1 || start + 2 > 9) {
+            continue;
+        }
+
+        const std::vector<Tile> needed = {
+            { selected.suit, start },
+            { selected.suit, start + 1 },
+            { selected.suit, start + 2 }
+        };
+
+        bool possible = true;
+        for (const Tile& tile : needed) {
+            if (CountClosedTile(handState, tile) < 1) {
+                possible = false;
+                break;
+            }
+        }
+        if (possible) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool CanPon(const HandState& handState, std::size_t selectedTile)
+{
+    return IsSelectedCallableTile(handState, selectedTile)
+        && CountClosedTile(handState, handState.closedTiles[selectedTile]) >= 3;
+}
+
+bool CanKan(const HandState& handState, std::size_t selectedTile)
+{
+    return IsSelectedCallableTile(handState, selectedTile)
+        && CountClosedTile(handState, handState.closedTiles[selectedTile]) >= 4;
+}
+
+bool CanMinkan(const HandState& handState, std::size_t selectedTile)
+{
+    return CanKan(handState, selectedTile);
+}
+
+bool MakeChi(HandState& handState, std::size_t selectedTile)
+{
+    return MakeSequenceMeld(handState, selectedTile);
+}
+
+bool MakePon(HandState& handState, std::size_t selectedTile)
+{
+    return MakeSameTileMeld(handState, selectedTile, MeldType::Triplet, 3);
+}
+
+bool MakeKan(HandState& handState, std::size_t selectedTile)
+{
+    return MakeSameTileMeld(handState, selectedTile, MeldType::Quad, 4);
+}
+
+bool MakeMinkan(HandState& handState, std::size_t selectedTile)
+{
+    return MakeSameTileMeld(handState, selectedTile, MeldType::OpenQuad, 4);
+}
+
+bool ReturnOpenMeld(HandState& handState, std::size_t meldIndex)
+{
+    if (meldIndex >= handState.openMelds.size()) {
+        return false;
+    }
+
+    const OpenMeld returningMeld = handState.openMelds[meldIndex];
+    if (IsKanMeldType(returningMeld.type) && !handState.closedTiles.empty()) {
+        handState.closedTiles.pop_back();
+    }
+
+    const auto insertPosition = handState.closedTiles.empty() ? handState.closedTiles.end() : handState.closedTiles.end() - 1;
+    handState.closedTiles.insert(insertPosition, returningMeld.tiles.begin(), returningMeld.tiles.end());
+    handState.openMelds.erase(handState.openMelds.begin() + static_cast<std::ptrdiff_t>(meldIndex));
+    return true;
+}
+
 std::vector<Tile> FindWinningCandidates(const std::vector<Tile>& hand, const HandContext& context)
 {
     return FindWinningCandidates(HandState{ hand, {}, context });
@@ -584,7 +828,7 @@ std::vector<Tile> FindWinningCandidates(const HandState& handState)
 {
     std::vector<Tile> winningCandidates;
     const std::vector<Tile> allTiles = AllTiles(handState);
-    if (allTiles.size() != 14 || HasInvalidTileCount(allTiles) || handState.closedTiles.empty()) {
+    if (EffectiveTileCount(handState) != 14 || HasInvalidTileCount(allTiles) || handState.closedTiles.empty()) {
         return winningCandidates;
     }
 
@@ -631,13 +875,14 @@ std::vector<Yaku> EvaluateDisplayYaku(const HandState& handState, const std::vec
         const YakuResult currentResult = EvaluateYaku(handState);
         if (currentResult.validWinningShape) {
             AddYakuResultNames(yaku, currentResult);
+            AddRiichiYaku(yaku, ContextForState(handState));
             return yaku;
         }
     }
     catch (...) {
     }
 
-    if (handState.context.isRiichi && allTiles.size() == 14 && !handState.closedTiles.empty()) {
+    if (handState.context.isRiichi && EffectiveTileCount(handState) == 14 && !handState.closedTiles.empty()) {
         const std::vector<Tile> baseClosedTiles(handState.closedTiles.begin(), handState.closedTiles.end() - 1);
         for (const Tile& candidate : winningCandidates) {
             HandState testState = handState;
@@ -659,6 +904,7 @@ std::vector<Yaku> EvaluateDisplayYaku(const HandState& handState, const std::vec
     catch (...) {
     }
 
+    AddRiichiYaku(yaku, ContextForState(handState));
     return yaku;
 }
 
@@ -708,9 +954,7 @@ HandViewAnalysis AnalyzeHandView(const HandState& handState)
     catch (...) {
     }
 
-    if (currentContext.isRiichi) {
-        analysis.winningCandidates = FindWinningCandidates(handState);
-    }
+    analysis.winningCandidates = FindWinningCandidates(handState);
     analysis.ready = !analysis.winningCandidates.empty();
     HandState currentState = handState;
     currentState.context = currentContext;

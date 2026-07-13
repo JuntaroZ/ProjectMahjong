@@ -35,6 +35,7 @@ constexpr int SelectionPenWidth = 3;
 constexpr int SortButtonWidth = 124;
 constexpr int TsumoRonButtonWidth = 150;
 constexpr int MeldButtonWidth = 72;
+constexpr int CheckBoxWidth = 118;
 constexpr int SortButtonHeight = 28;
 constexpr int ButtonGap = 10;
 constexpr int MeldAreaGap = 34;
@@ -52,7 +53,8 @@ enum class SelectionArea {
 enum class OpenMeldType {
     Chi,
     Pon,
-    Kan
+    Kan,
+    Minkan
 };
 
 struct OpenMeld {
@@ -68,6 +70,7 @@ struct MeldButtonState {
     bool canChi{ false };
     bool canPon{ false };
     bool canKan{ false };
+    bool canMinkan{ false };
     bool canReturn{ false };
 };
 
@@ -101,7 +104,10 @@ RECT TsumoRonButtonRect();
 RECT ChiButtonRect();
 RECT PonButtonRect();
 RECT KanButtonRect();
+RECT MinkanButtonRect();
 RECT ReturnMeldButtonRect();
+RECT RiichiCheckBoxRect();
+RECT OpenTanyaoCheckBoxRect();
 void ResizeWindowToHand(HWND hwnd);
 
 int TileTop()
@@ -159,12 +165,43 @@ mahjong::HandState CurrentHandState()
         case OpenMeldType::Kan:
             openMeld.type = mahjong::MeldType::Quad;
             break;
+        case OpenMeldType::Minkan:
+            openMeld.type = mahjong::MeldType::OpenQuad;
+            break;
         }
         openMeld.tiles = meld.tiles;
         state.openMelds.push_back(std::move(openMeld));
     }
 
     return state;
+}
+
+void ApplyHandState(const mahjong::HandState& state)
+{
+    g_hand = state.closedTiles;
+    g_context = state.context;
+    g_openMelds.clear();
+    g_openMelds.reserve(state.openMelds.size());
+
+    for (const mahjong::OpenMeld& meld : state.openMelds) {
+        OpenMeld openMeld;
+        switch (meld.type) {
+        case mahjong::MeldType::Sequence:
+            openMeld.type = OpenMeldType::Chi;
+            break;
+        case mahjong::MeldType::Triplet:
+            openMeld.type = OpenMeldType::Pon;
+            break;
+        case mahjong::MeldType::Quad:
+            openMeld.type = OpenMeldType::Kan;
+            break;
+        case mahjong::MeldType::OpenQuad:
+            openMeld.type = OpenMeldType::Minkan;
+            break;
+        }
+        openMeld.tiles = meld.tiles;
+        g_openMelds.push_back(std::move(openMeld));
+    }
 }
 
 std::vector<mahjong::Tile> AllTilesForCurrentState()
@@ -176,24 +213,25 @@ std::vector<mahjong::Tile> AllTilesForCurrentState()
     return tiles;
 }
 
+std::size_t EffectiveTileCountForCurrentState()
+{
+    std::size_t count = g_hand.size();
+    for (const OpenMeld& meld : g_openMelds) {
+        count += (meld.type == OpenMeldType::Kan || meld.type == OpenMeldType::Minkan) ? 3 : meld.tiles.size();
+    }
+    return count;
+}
+
 bool SameTile(const mahjong::Tile& left, const mahjong::Tile& right)
 {
     return left == right;
 }
 
-int CountTileInHand(const mahjong::Tile& target)
+bool HasRiichiBlockingMeld()
 {
-    return static_cast<int>(std::count(g_hand.begin(), g_hand.end(), target));
-}
-
-bool IsNumberTile(const mahjong::Tile& tile)
-{
-    return tile.suit != mahjong::Suit::Honor;
-}
-
-mahjong::Tile MakeTile(mahjong::Suit suit, int rank)
-{
-    return { suit, rank };
+    return std::any_of(g_openMelds.begin(), g_openMelds.end(), [](const OpenMeld& meld) {
+        return meld.type != OpenMeldType::Kan;
+    });
 }
 
 std::vector<mahjong::Tile> SortedMeldTiles(std::vector<mahjong::Tile> tiles)
@@ -280,7 +318,12 @@ void UpdateWinningTileFromHand()
         g_context.winningTile = g_hand.back();
     }
     g_context.isTsumo = !g_isRonTile;
-    g_context.isClosed = g_openMelds.empty() && g_baseContext.isClosed;
+    g_context.isClosed = !HasRiichiBlockingMeld() && g_baseContext.isClosed;
+    if (HasRiichiBlockingMeld()) {
+        g_context.isRiichi = false;
+        g_baseContext.isRiichi = false;
+        mahjong::SetRiichiYaku(false);
+    }
 }
 
 std::wstring TileImageFileName(const mahjong::Tile& tile)
@@ -430,57 +473,26 @@ void LoadOpenMeldImages()
 
 bool CanChiSelectedTile()
 {
-    if (g_selectionArea != SelectionArea::HandTile || g_selectedTile >= g_hand.size()) {
-        return false;
-    }
-    if (g_hand.size() >= 2 && g_selectedTile == g_hand.size() - 1) {
-        return false;
-    }
-
-    const mahjong::Tile selected = g_hand[g_selectedTile];
-    if (!IsNumberTile(selected)) {
-        return false;
-    }
-
-    for (int start = selected.rank; start >= selected.rank - 2; --start) {
-        if (start < 1 || start + 2 > 9) {
-            continue;
-        }
-
-        std::vector<mahjong::Tile> needed = {
-            MakeTile(selected.suit, start),
-            MakeTile(selected.suit, start + 1),
-            MakeTile(selected.suit, start + 2)
-        };
-        bool possible = true;
-        for (const mahjong::Tile& tile : needed) {
-            if (CountTileInHand(tile) < 1) {
-                possible = false;
-                break;
-            }
-        }
-        if (possible) {
-            return true;
-        }
-    }
-
-    return false;
+    return g_selectionArea == SelectionArea::HandTile
+        && mahjong::CanChi(CurrentHandState(), g_selectedTile);
 }
 
 bool CanPonSelectedTile()
 {
     return g_selectionArea == SelectionArea::HandTile
-        && g_selectedTile < g_hand.size()
-        && !(g_hand.size() >= 2 && g_selectedTile == g_hand.size() - 1)
-        && CountTileInHand(g_hand[g_selectedTile]) >= 3;
+        && mahjong::CanPon(CurrentHandState(), g_selectedTile);
 }
 
 bool CanKanSelectedTile()
 {
     return g_selectionArea == SelectionArea::HandTile
-        && g_selectedTile < g_hand.size()
-        && !(g_hand.size() >= 2 && g_selectedTile == g_hand.size() - 1)
-        && CountTileInHand(g_hand[g_selectedTile]) >= 4;
+        && mahjong::CanKan(CurrentHandState(), g_selectedTile);
+}
+
+bool CanMinkanSelectedTile()
+{
+    return g_selectionArea == SelectionArea::HandTile
+        && mahjong::CanMinkan(CurrentHandState(), g_selectedTile);
 }
 
 void UpdateMeldButtonState()
@@ -488,6 +500,7 @@ void UpdateMeldButtonState()
     g_meldButtons.canChi = CanChiSelectedTile();
     g_meldButtons.canPon = CanPonSelectedTile();
     g_meldButtons.canKan = CanKanSelectedTile();
+    g_meldButtons.canMinkan = CanMinkanSelectedTile();
     g_meldButtons.canReturn = g_selectionArea == SelectionArea::OpenMeld && g_selectedMeld < g_openMelds.size();
 }
 
@@ -495,7 +508,7 @@ void UpdateWinningCandidates()
 {
     g_winningCandidates.clear();
     const mahjong::HandState handState = CurrentHandState();
-    if (g_invalidTileSelection || !g_context.isRiichi || AllTilesForCurrentState().size() != 14) {
+    if (g_invalidTileSelection || EffectiveTileCountForCurrentState() != 14) {
         LoadWinningCandidateImages();
         return;
     }
@@ -630,79 +643,44 @@ void ChangeSelectedTileSuit(int direction)
     UpdateMeldButtonState();
 }
 
-void RemoveTilesForMeld(const std::vector<mahjong::Tile>& tiles)
-{
-    std::vector<bool> remove(g_hand.size(), false);
-    for (const mahjong::Tile& tile : tiles) {
-        for (std::size_t i = 0; i < g_hand.size(); ++i) {
-            if (!remove[i] && SameTile(g_hand[i], tile)) {
-                remove[i] = true;
-                break;
-            }
-        }
-    }
-
-    std::vector<mahjong::Tile> remaining;
-    remaining.reserve(g_hand.size());
-    for (std::size_t i = 0; i < g_hand.size(); ++i) {
-        if (!remove[i]) {
-            remaining.push_back(g_hand[i]);
-        }
-    }
-    g_hand = std::move(remaining);
-}
-
 bool MakeChiMeld()
 {
-    if (!CanChiSelectedTile()) {
+    mahjong::HandState state = CurrentHandState();
+    if (!mahjong::MakeChi(state, g_selectedTile)) {
         return false;
     }
 
-    const mahjong::Tile selected = g_hand[g_selectedTile];
-    for (int start = selected.rank - 2; start <= selected.rank; ++start) {
-        if (start < 1 || start + 2 > 9) {
-            continue;
-        }
-
-        std::vector<mahjong::Tile> tiles = {
-            MakeTile(selected.suit, start),
-            MakeTile(selected.suit, start + 1),
-            MakeTile(selected.suit, start + 2)
-        };
-
-        bool possible = true;
-        for (const mahjong::Tile& tile : tiles) {
-            if (CountTileInHand(tile) < 1) {
-                possible = false;
-                break;
-            }
-        }
-
-        if (possible) {
-            g_openMelds.push_back({ OpenMeldType::Chi, tiles });
-            RemoveTilesForMeld(tiles);
-            g_selectionArea = SelectionArea::OpenMeld;
-            g_selectedMeld = g_openMelds.empty() ? 0 : g_openMelds.size() - 1;
-            return true;
-        }
-    }
-
-    return false;
+    ApplyHandState(state);
+    g_selectionArea = SelectionArea::OpenMeld;
+    g_selectedMeld = g_openMelds.empty() ? 0 : g_openMelds.size() - 1;
+    return true;
 }
 
 bool MakeSameTileMeld(OpenMeldType type, int count)
 {
-    if (g_selectionArea != SelectionArea::HandTile || g_selectedTile >= g_hand.size()) {
-        return false;
+    (void)count;
+
+    mahjong::HandState state = CurrentHandState();
+    bool made = false;
+    switch (type) {
+    case OpenMeldType::Pon:
+        made = mahjong::MakePon(state, g_selectedTile);
+        break;
+    case OpenMeldType::Kan:
+        made = mahjong::MakeKan(state, g_selectedTile);
+        break;
+    case OpenMeldType::Minkan:
+        made = mahjong::MakeMinkan(state, g_selectedTile);
+        break;
+    case OpenMeldType::Chi:
+        made = mahjong::MakeChi(state, g_selectedTile);
+        break;
     }
-    const mahjong::Tile selected = g_hand[g_selectedTile];
-    if (CountTileInHand(selected) < count) {
+    if (!made) {
         return false;
     }
 
-    std::vector<mahjong::Tile> tiles(static_cast<std::size_t>(count), selected);
-    g_openMelds.push_back({ type, tiles });
-    RemoveTilesForMeld(tiles);
+    ApplyHandState(state);
     g_selectionArea = SelectionArea::OpenMeld;
     g_selectedMeld = g_openMelds.empty() ? 0 : g_openMelds.size() - 1;
     return true;
@@ -710,13 +688,12 @@ bool MakeSameTileMeld(OpenMeldType type, int count)
 
 bool ReturnSelectedMeld()
 {
-    if (g_selectionArea != SelectionArea::OpenMeld || g_selectedMeld >= g_openMelds.size()) {
+    mahjong::HandState state = CurrentHandState();
+    if (!mahjong::ReturnOpenMeld(state, g_selectedMeld)) {
         return false;
     }
 
-    const auto insertPosition = g_hand.empty() ? g_hand.end() : g_hand.end() - 1;
-    g_hand.insert(insertPosition, g_openMelds[g_selectedMeld].tiles.begin(), g_openMelds[g_selectedMeld].tiles.end());
-    g_openMelds.erase(g_openMelds.begin() + static_cast<std::ptrdiff_t>(g_selectedMeld));
+    ApplyHandState(state);
     g_selectionArea = SelectionArea::HandTile;
     g_selectedTile = g_hand.size() >= 2 ? g_hand.size() - 2 : 0;
     g_selectedMeld = 0;
@@ -813,11 +790,11 @@ SIZE HandImageSize()
     if (!g_openMeldImages.empty()) {
         size.cx = std::max<LONG>(size.cx, OpenMeldsRight() + WindowPadding);
     }
-    size.cx = std::max<LONG>(size.cx, ReturnMeldButtonRect().right + WindowPadding);
+    size.cx = std::max<LONG>(size.cx, OpenTanyaoCheckBoxRect().right + WindowPadding);
 
     size.cy += static_cast<LONG>(maxHeight);
 
-    if (g_context.isRiichi) {
+    if (!g_winningCandidates.empty()) {
         const LONG candidateWidth = static_cast<LONG>(maxWidth) * MaxWinningCandidateCount
             + CandidateGap * (MaxWinningCandidateCount - 1)
             + CandidateFramePadding * 2;
@@ -999,12 +976,12 @@ void InvalidateYakuTextArea(HWND hwnd)
 void InvalidateCommandButtonArea(HWND hwnd)
 {
     const RECT sortRect = SortButtonRect();
-    const RECT returnRect = ReturnMeldButtonRect();
+    const RECT openTanyaoRect = OpenTanyaoCheckBoxRect();
     RECT rect{
         sortRect.left - SelectionPenWidth,
         sortRect.top - SelectionPenWidth,
-        returnRect.right + SelectionPenWidth,
-        returnRect.bottom + SelectionPenWidth
+        openTanyaoRect.right + SelectionPenWidth,
+        openTanyaoRect.bottom + SelectionPenWidth
     };
     InvalidateRect(hwnd, &rect, FALSE);
 }
@@ -1073,9 +1050,24 @@ RECT KanButtonRect()
     return ButtonRectAfter(PonButtonRect(), MeldButtonWidth);
 }
 
-RECT ReturnMeldButtonRect()
+RECT MinkanButtonRect()
 {
     return ButtonRectAfter(KanButtonRect(), MeldButtonWidth);
+}
+
+RECT ReturnMeldButtonRect()
+{
+    return ButtonRectAfter(MinkanButtonRect(), MeldButtonWidth);
+}
+
+RECT RiichiCheckBoxRect()
+{
+    return ButtonRectAfter(ReturnMeldButtonRect(), CheckBoxWidth);
+}
+
+RECT OpenTanyaoCheckBoxRect()
+{
+    return ButtonRectAfter(RiichiCheckBoxRect(), CheckBoxWidth);
 }
 
 bool IsPointInRect(const RECT& rect, int x, int y)
@@ -1384,12 +1376,55 @@ void DrawCommandButton(Gdiplus::Graphics& graphics, const RECT& rect, const wcha
         static_cast<Gdiplus::REAL>(rect.bottom - rect.top)), &format, &textBrush);
 }
 
+void DrawCheckBox(Gdiplus::Graphics& graphics, const RECT& rect, const wchar_t* label, bool checked, bool enabled = true)
+{
+    Gdiplus::FontFamily fontFamily(L"Yu Gothic UI");
+    Gdiplus::Font font(&fontFamily, 14.0f, Gdiplus::FontStyleRegular, Gdiplus::UnitPixel);
+    Gdiplus::SolidBrush textBrush(enabled
+        ? Gdiplus::Color(255, 245, 255, 248)
+        : Gdiplus::Color(255, 175, 195, 182));
+    Gdiplus::SolidBrush boxBrush(enabled
+        ? Gdiplus::Color(255, 238, 244, 240)
+        : Gdiplus::Color(255, 185, 195, 188));
+    Gdiplus::Pen borderPen(enabled
+        ? Gdiplus::Color(255, 34, 86, 58)
+        : Gdiplus::Color(255, 115, 130, 120), 2.0f);
+    Gdiplus::Pen checkPen(enabled
+        ? Gdiplus::Color(255, 0, 0, 0)
+        : Gdiplus::Color(255, 95, 105, 100), 3.0f);
+
+    const int boxSize = 18;
+    const int boxLeft = rect.left;
+    const int boxTop = rect.top + (rect.bottom - rect.top - boxSize) / 2;
+    Gdiplus::Rect boxRect(boxLeft, boxTop, boxSize, boxSize);
+    graphics.FillRectangle(&boxBrush, boxRect);
+    graphics.DrawRectangle(&borderPen, boxRect);
+
+    if (checked) {
+        graphics.DrawLine(&checkPen, boxLeft + 4, boxTop + 9, boxLeft + 8, boxTop + 14);
+        graphics.DrawLine(&checkPen, boxLeft + 8, boxTop + 14, boxLeft + 15, boxTop + 4);
+    }
+
+    graphics.DrawString(label, -1, &font, Gdiplus::RectF(
+        static_cast<Gdiplus::REAL>(boxLeft + boxSize + 6),
+        static_cast<Gdiplus::REAL>(rect.top),
+        static_cast<Gdiplus::REAL>(rect.right - rect.left - boxSize - 6),
+        static_cast<Gdiplus::REAL>(rect.bottom - rect.top)), nullptr, &textBrush);
+}
+
 void DrawMeldButtons(Gdiplus::Graphics& graphics)
 {
     DrawCommandButton(graphics, ChiButtonRect(), L"チー", g_meldButtons.canChi);
     DrawCommandButton(graphics, PonButtonRect(), L"ポン", g_meldButtons.canPon);
     DrawCommandButton(graphics, KanButtonRect(), L"カン", g_meldButtons.canKan);
+    DrawCommandButton(graphics, MinkanButtonRect(), L"ミンカン", g_meldButtons.canMinkan);
     DrawCommandButton(graphics, ReturnMeldButtonRect(), L"戻す", g_meldButtons.canReturn);
+}
+
+void DrawRuleCheckBoxes(Gdiplus::Graphics& graphics)
+{
+    DrawCheckBox(graphics, RiichiCheckBoxRect(), L"リーチあり", g_context.isRiichi, !HasRiichiBlockingMeld());
+    DrawCheckBox(graphics, OpenTanyaoCheckBoxRect(), L"喰いタンあり", g_context.allowOpenTanyao, !g_openMelds.empty());
 }
 
 void DrawInvalidTileOverlay(Gdiplus::Graphics& graphics)
@@ -1489,6 +1524,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
         DrawSortButton(graphics);
         DrawTsumoRonButton(graphics);
         DrawMeldButtons(graphics);
+        DrawRuleCheckBoxes(graphics);
 
         for (std::size_t i = 0; i < g_tileImages.size(); ++i) {
             const TileImage& tileImage = g_tileImages[i];
@@ -1551,6 +1587,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
             if (g_selectionArea != SelectionArea::HandTile) {
                 return 0;
             }
+            const bool hadWinningCandidates = !g_winningCandidates.empty();
             if (GetKeyState(VK_SHIFT) & 0x8000) {
                 ChangeSelectedTileSuit(1);
             }
@@ -1560,6 +1597,9 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
             UpdateWinningCandidates();
             UpdateYakuText();
             UpdateShantenText();
+            if (hadWinningCandidates != !g_winningCandidates.empty()) {
+                ResizeWindowToHand(hwnd);
+            }
             InvalidateYakuTextArea(hwnd);
             InvalidateCommandButtonArea(hwnd);
             InvalidateTile(hwnd, g_selectedTile);
@@ -1571,6 +1611,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
             if (g_selectionArea != SelectionArea::HandTile) {
                 return 0;
             }
+            const bool hadWinningCandidates = !g_winningCandidates.empty();
             if (GetKeyState(VK_SHIFT) & 0x8000) {
                 ChangeSelectedTileSuit(-1);
             }
@@ -1580,6 +1621,9 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
             UpdateWinningCandidates();
             UpdateYakuText();
             UpdateShantenText();
+            if (hadWinningCandidates != !g_winningCandidates.empty()) {
+                ResizeWindowToHand(hwnd);
+            }
             InvalidateYakuTextArea(hwnd);
             InvalidateCommandButtonArea(hwnd);
             InvalidateTile(hwnd, g_selectedTile);
@@ -1616,6 +1660,39 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
             InvalidateRect(hwnd, nullptr, FALSE);
             return 0;
         }
+        if (IsPointInRect(RiichiCheckBoxRect(), x, y)) {
+            if (HasRiichiBlockingMeld()) {
+                return 0;
+            }
+            g_context.isRiichi = !g_context.isRiichi;
+            g_baseContext.isRiichi = g_context.isRiichi;
+            mahjong::SetRiichiYaku(g_context.isRiichi);
+            UpdateYakuText();
+            InvalidateYakuTextArea(hwnd);
+            RECT rect = RiichiCheckBoxRect();
+            rect.left -= SelectionPenWidth;
+            rect.top -= SelectionPenWidth;
+            rect.right += SelectionPenWidth;
+            rect.bottom += SelectionPenWidth;
+            InvalidateRect(hwnd, &rect, FALSE);
+            return 0;
+        }
+        if (IsPointInRect(OpenTanyaoCheckBoxRect(), x, y)) {
+            if (g_openMelds.empty()) {
+                return 0;
+            }
+            g_context.allowOpenTanyao = !g_context.allowOpenTanyao;
+            g_baseContext.allowOpenTanyao = g_context.allowOpenTanyao;
+            UpdateYakuText();
+            InvalidateYakuTextArea(hwnd);
+            RECT rect = OpenTanyaoCheckBoxRect();
+            rect.left -= SelectionPenWidth;
+            rect.top -= SelectionPenWidth;
+            rect.right += SelectionPenWidth;
+            rect.bottom += SelectionPenWidth;
+            InvalidateRect(hwnd, &rect, FALSE);
+            return 0;
+        }
         if (IsPointInRect(ChiButtonRect(), x, y)) {
             if (g_meldButtons.canChi && MakeChiMeld()) {
                 RefreshAfterHandStructureChanged(hwnd);
@@ -1630,6 +1707,12 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
         }
         if (IsPointInRect(KanButtonRect(), x, y)) {
             if (g_meldButtons.canKan && MakeSameTileMeld(OpenMeldType::Kan, 4)) {
+                RefreshAfterHandStructureChanged(hwnd);
+            }
+            return 0;
+        }
+        if (IsPointInRect(MinkanButtonRect(), x, y)) {
+            if (g_meldButtons.canMinkan && MakeSameTileMeld(OpenMeldType::Minkan, 4)) {
                 RefreshAfterHandStructureChanged(hwnd);
             }
             return 0;
@@ -1663,6 +1746,7 @@ int ShowHandWindow(HINSTANCE instance, std::vector<mahjong::Tile> hand, const ma
     g_hand = std::move(hand);
     g_context = context;
     g_baseContext = context;
+    mahjong::SetRiichiYaku(g_context.isRiichi);
     g_openMelds.clear();
     g_openMeldImages.clear();
     g_selectionArea = SelectionArea::HandTile;

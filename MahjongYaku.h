@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <string>
 #include <vector>
 
@@ -33,6 +34,7 @@ struct HandContext {
     bool isClosed{ true };
     bool isTsumo{ false };
     bool isRiichi{ false };
+    bool allowOpenTanyao{ true };
     bool isIppatsu{ false };
     bool isRinshan{ false };
     bool isChankan{ false };
@@ -45,7 +47,8 @@ struct HandContext {
 enum class MeldType {
     Sequence,
     Triplet,
-    Quad
+    Quad,
+    OpenQuad
 };
 
 struct OpenMeld {
@@ -95,11 +98,21 @@ YakuResult EvaluateYaku(const std::vector<Tile>& closedTiles, const HandContext&
 YakuResult EvaluateYaku(const HandState& handState);
 YakuResult EvaluateCurrentYaku(const std::vector<Tile>& closedTiles, const HandContext& context);
 YakuResult EvaluateCurrentYaku(const HandState& handState);
+void SetRiichiYaku(bool enabled);
 std::vector<Tile> AllTileKinds();
 int CountTile(const std::vector<Tile>& tiles, const Tile& target);
 bool HasInvalidTileCount(const std::vector<Tile>& tiles);
 int CalculateShanten(const std::vector<Tile>& tiles);
 int CalculateShanten(const HandState& handState);
+bool CanChi(const HandState& handState, std::size_t selectedTile);
+bool CanPon(const HandState& handState, std::size_t selectedTile);
+bool CanKan(const HandState& handState, std::size_t selectedTile);
+bool CanMinkan(const HandState& handState, std::size_t selectedTile);
+bool MakeChi(HandState& handState, std::size_t selectedTile);
+bool MakePon(HandState& handState, std::size_t selectedTile);
+bool MakeKan(HandState& handState, std::size_t selectedTile);
+bool MakeMinkan(HandState& handState, std::size_t selectedTile);
+bool ReturnOpenMeld(HandState& handState, std::size_t meldIndex);
 std::vector<Tile> FindWinningCandidates(const std::vector<Tile>& hand, const HandContext& context);
 std::vector<Tile> FindWinningCandidates(const HandState& handState);
 std::vector<Yaku> EvaluateDisplayYaku(const std::vector<Tile>& hand, const HandContext& context, const std::vector<Tile>& winningCandidates);
