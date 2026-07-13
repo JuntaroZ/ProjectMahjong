@@ -230,7 +230,7 @@
           <thead><tr><th>ファイル</th><th>役割</th></tr></thead>
           <tbody>
             <tr><td><code>MahjongYaku.h</code></td><td>外部公開 API、牌、手牌（てはい）条件、役、解析結果の型定義。</td></tr>
-            <tr><td><code>MahjongYaku.cpp</code></td><td>役判定 API、シャンテン計算、和了（ほうら）候補探索、表示用役一覧生成、表示用点数計算。</td></tr>
+            <tr><td><code>MahjongYaku.cpp</code></td><td>役判定 API、シャンテン計算、和了（ほうら）候補探索、鳴き（なき）操作、表示用役一覧生成、表示用点数計算。</td></tr>
             <tr><td><code>MahjongHandAnalysis.h/.cpp</code></td><td>手牌（てはい）の内部解析、面子（めんつ）分解、七対子（ちーといつ）、国士無双（こくしむそう）の形判定。</td></tr>
             <tr><td><code>YakuRules</code></td><td>役ごとの判定クラス、役名、翻数（はんすう）、役満（やくまん）設定。</td></tr>
           </tbody>
@@ -350,7 +350,8 @@ Tile Honor(int rank);</code></pre>
         <pre><code>enum class MeldType {
     Sequence,
     Triplet,
-    Quad
+    Quad,
+    OpenQuad
 };
 
 struct OpenMeld {
@@ -365,9 +366,10 @@ struct HandState {
 };</code></pre>
         <ul>
           <li><code>closedTiles</code> は手牌（てはい）側に残っている牌です。14牌目をツモ・ロン牌として扱う場合は最後に入れます。</li>
-          <li><code>openMelds</code> はチー、ポン、カンで固定された面子（めんつ）です。順子（しゅんつ）、刻子（こーつ）、槓子（かんつ）を区別します。</li>
-          <li>鳴き面子（めんつ）がある場合、判定時は門前（めんぜん）ではないものとして扱います。</li>
+          <li><code>openMelds</code> はチー、ポン、カン、ミンカンで固定された面子（めんつ）です。順子（しゅんつ）、刻子（こーつ）、槓子（かんつ）、明槓（みんかん）を区別します。</li>
+          <li>チー、ポン、ミンカンの面子（めんつ）がある場合、判定時は門前（めんぜん）ではないものとして扱います。カンは暗槓（あんかん）相当として扱い、門前（めんぜん）を維持します。</li>
           <li>開いた刻子（こーつ）や槓子（かんつ）は、対々和（といといほう）や役牌（やくはい）では面子として数えますが、三暗刻（さんあんこう）・四暗刻（すーあんこう）の暗刻（あんこ）数には含めません。</li>
+          <li>カン、ミンカンを作成した場合は手牌（てはい）側に補充牌を1枚追加します。鳴き面子（めんつ）を戻す場合、カン、ミンカンでは右端の補充牌を1枚減らしてから面子（めんつ）を手牌（てはい）側へ戻します。</li>
         </ul>
       </section>
 
@@ -495,6 +497,23 @@ struct HandState {
         <pre><code>HandViewAnalysis AnalyzeHandView(const HandState&amp; handState);</code></pre>
         <p>手牌（てはい）画面用の総合解析を行います。同一牌5枚以上の検出、シャンテン計算、和了（ほうら）形判定、和了（ほうら）候補探索、表示用役一覧生成をまとめて行います。</p>
 
+        <h3>鳴き（なき）操作</h3>
+        <pre><code>bool CanChi(const HandState&amp; handState, std::size_t selectedTile);
+bool CanPon(const HandState&amp; handState, std::size_t selectedTile);
+bool CanKan(const HandState&amp; handState, std::size_t selectedTile);
+bool CanMinkan(const HandState&amp; handState, std::size_t selectedTile);
+bool MakeChi(HandState&amp; handState, std::size_t selectedTile);
+bool MakePon(HandState&amp; handState, std::size_t selectedTile);
+bool MakeKan(HandState&amp; handState, std::size_t selectedTile);
+bool MakeMinkan(HandState&amp; handState, std::size_t selectedTile);
+bool ReturnOpenMeld(HandState&amp; handState, std::size_t meldIndex);</code></pre>
+        <ul>
+          <li><code>Can*</code> は、選択中の牌からチー、ポン、カン、ミンカンを作れるかを判定します。</li>
+          <li><code>Make*</code> は、作成できる場合に手牌（てはい）側から対象牌を取り除き、<code>openMelds</code> に面子（めんつ）を追加します。</li>
+          <li><code>MakeKan</code> と <code>MakeMinkan</code> は、槓（かん）後の補充牌を手牌（てはい）側へ1枚追加します。</li>
+          <li><code>ReturnOpenMeld</code> は、選択した鳴き面子（めんつ）を手牌（てはい）側へ戻します。カン、ミンカンの場合は補充牌を1枚減らしてから戻します。</li>
+        </ul>
+
         <h3>その他</h3>
         <table>
           <thead><tr><th>API</th><th>内容</th></tr></thead>
@@ -598,7 +617,7 @@ struct HandState {
         <h2>制限事項</h2>
         <ul>
           <li>公開 API は閉じた手牌（てはい）だけでなく、<code>HandState</code> により鳴き（なき）面子（めんつ）も渡せます。</li>
-          <li>鳴き（なき）面子（めんつ）は順子（しゅんつ）、刻子（こーつ）、槓子（かんつ）として扱います。ただし明槓（みんかん）、暗槓（あんかん）、加槓（かかん）の細分化は未対応です。</li>
+          <li>槓（かん）は暗槓（あんかん）相当の <code>Quad</code> と、明槓（みんかん）相当の <code>OpenQuad</code> を区別します。ただし加槓（かかん）や槓ドラ（かんどら）など、局進行を伴う詳細処理は未対応です。</li>
           <li>ドラ、赤ドラ、裏ドラ、場棒、本場は未対応です。</li>
           <li>点数計算の符は簡易仕様です。</li>
           <li>ダブル役満（やくまん）、数え役満（かぞえやくまん）の細かい扱いは未整備です。</li>
@@ -611,8 +630,6 @@ struct HandState {
       <section id="remaining">
         <h2>残課題</h2>
         <ul>
-          <li>鳴き（なき）の基本操作は画面側で対応済みです。選択牌からチー、ポン、カンを作成し、鳴き面子（めんつ）を選択して戻せます。</li>
-          <li>鳴き（なき）面子（めんつ）の基本 API は対応済みです。次の課題は、明槓（みんかん）、暗槓（あんかん）、加槓（かかん）を区別して扱うことです。</li>
           <li>ドラ関連は未対応です。ドラ、裏ドラ（うらどら）、赤ドラ、槓ドラ（かんどら）、槓裏ドラ（かんうらどら）を扱うための牌情報と局情報が必要です。</li>
           <li>点数計算は完全対応ではありません。詳細な符計算、親子、ロン、ツモ、本場（ほんば）、供託（きょうたく）リーチ棒、切り上げ満貫（まんがん）などの対応が必要です。</li>
           <li>役満（やくまん）の扱いは拡張余地があります。ダブル役満、複合役満、数え役満（かぞえやくまん）のルール設定が必要です。</li>
