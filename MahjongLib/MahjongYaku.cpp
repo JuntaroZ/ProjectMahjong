@@ -988,4 +988,124 @@ std::string TileToString(const Tile& tile)
     return std::to_string(tile.rank) + suffix;
 }
 
+YakuResult MahjongLibrary::EvaluateYaku(const std::vector<Tile>& closedTiles, const HandContext& context) const
+{
+    return mahjong::EvaluateYaku(closedTiles, context);
+}
+
+YakuResult MahjongLibrary::EvaluateYaku(const HandState& handState) const
+{
+    return mahjong::EvaluateYaku(handState);
+}
+
+YakuResult MahjongLibrary::EvaluateCurrentYaku(const std::vector<Tile>& closedTiles, const HandContext& context) const
+{
+    return mahjong::EvaluateCurrentYaku(closedTiles, context);
+}
+
+YakuResult MahjongLibrary::EvaluateCurrentYaku(const HandState& handState) const
+{
+    return mahjong::EvaluateCurrentYaku(handState);
+}
+
+void MahjongLibrary::SetRiichiYaku(bool enabled) const
+{
+    mahjong::SetRiichiYaku(enabled);
+}
+
+int MahjongLibrary::CalculateShanten(const std::vector<Tile>& tiles) const
+{
+    return mahjong::CalculateShanten(tiles);
+}
+
+int MahjongLibrary::CalculateShanten(const HandState& handState) const
+{
+    return mahjong::CalculateShanten(handState);
+}
+
+bool MahjongLibrary::CanChi(const HandState& handState, std::size_t selectedTile) const
+{
+    return mahjong::CanChi(handState, selectedTile);
+}
+
+bool MahjongLibrary::CanPon(const HandState& handState, std::size_t selectedTile) const
+{
+    return mahjong::CanPon(handState, selectedTile);
+}
+
+bool MahjongLibrary::CanKan(const HandState& handState, std::size_t selectedTile) const
+{
+    return mahjong::CanKan(handState, selectedTile);
+}
+
+bool MahjongLibrary::CanMinkan(const HandState& handState, std::size_t selectedTile) const
+{
+    return mahjong::CanMinkan(handState, selectedTile);
+}
+
+bool MahjongLibrary::MakeChi(HandState& handState, std::size_t selectedTile) const
+{
+    return mahjong::MakeChi(handState, selectedTile);
+}
+
+bool MahjongLibrary::MakePon(HandState& handState, std::size_t selectedTile) const
+{
+    return mahjong::MakePon(handState, selectedTile);
+}
+
+bool MahjongLibrary::MakeKan(HandState& handState, std::size_t selectedTile) const
+{
+    return mahjong::MakeKan(handState, selectedTile);
+}
+
+bool MahjongLibrary::MakeMinkan(HandState& handState, std::size_t selectedTile) const
+{
+    return mahjong::MakeMinkan(handState, selectedTile);
+}
+
+bool MahjongLibrary::ReturnOpenMeld(HandState& handState, std::size_t meldIndex) const
+{
+    return mahjong::ReturnOpenMeld(handState, meldIndex);
+}
+
+std::vector<Tile> MahjongLibrary::FindWinningCandidates(const std::vector<Tile>& hand, const HandContext& context) const
+{
+    return mahjong::FindWinningCandidates(hand, context);
+}
+
+std::vector<Tile> MahjongLibrary::FindWinningCandidates(const HandState& handState) const
+{
+    return mahjong::FindWinningCandidates(handState);
+}
+
+std::vector<Yaku> MahjongLibrary::EvaluateDisplayYaku(
+    const std::vector<Tile>& hand,
+    const HandContext& context,
+    const std::vector<Tile>& winningCandidates) const
+{
+    return mahjong::EvaluateDisplayYaku(hand, context, winningCandidates);
+}
+
+std::vector<Yaku> MahjongLibrary::EvaluateDisplayYaku(
+    const HandState& handState,
+    const std::vector<Tile>& winningCandidates) const
+{
+    return mahjong::EvaluateDisplayYaku(handState, winningCandidates);
+}
+
+std::vector<YakuScore> MahjongLibrary::CalculateDisplayYakuScores(const std::vector<Yaku>& yaku, const HandContext& context) const
+{
+    return mahjong::CalculateDisplayYakuScores(yaku, context);
+}
+
+HandViewAnalysis MahjongLibrary::AnalyzeHandView(const std::vector<Tile>& hand, const HandContext& context) const
+{
+    return mahjong::AnalyzeHandView(hand, context);
+}
+
+HandViewAnalysis MahjongLibrary::AnalyzeHandView(const HandState& handState) const
+{
+    return mahjong::AnalyzeHandView(handState);
+}
+
 } // namespace mahjong

@@ -89,6 +89,33 @@ struct HandViewAnalysis {
     std::vector<Tile> winningCandidates;
 };
 
+class MahjongLibrary {
+public:
+    YakuResult EvaluateYaku(const std::vector<Tile>& closedTiles, const HandContext& context) const;
+    YakuResult EvaluateYaku(const HandState& handState) const;
+    YakuResult EvaluateCurrentYaku(const std::vector<Tile>& closedTiles, const HandContext& context) const;
+    YakuResult EvaluateCurrentYaku(const HandState& handState) const;
+    void SetRiichiYaku(bool enabled) const;
+    int CalculateShanten(const std::vector<Tile>& tiles) const;
+    int CalculateShanten(const HandState& handState) const;
+    bool CanChi(const HandState& handState, std::size_t selectedTile) const;
+    bool CanPon(const HandState& handState, std::size_t selectedTile) const;
+    bool CanKan(const HandState& handState, std::size_t selectedTile) const;
+    bool CanMinkan(const HandState& handState, std::size_t selectedTile) const;
+    bool MakeChi(HandState& handState, std::size_t selectedTile) const;
+    bool MakePon(HandState& handState, std::size_t selectedTile) const;
+    bool MakeKan(HandState& handState, std::size_t selectedTile) const;
+    bool MakeMinkan(HandState& handState, std::size_t selectedTile) const;
+    bool ReturnOpenMeld(HandState& handState, std::size_t meldIndex) const;
+    std::vector<Tile> FindWinningCandidates(const std::vector<Tile>& hand, const HandContext& context) const;
+    std::vector<Tile> FindWinningCandidates(const HandState& handState) const;
+    std::vector<Yaku> EvaluateDisplayYaku(const std::vector<Tile>& hand, const HandContext& context, const std::vector<Tile>& winningCandidates) const;
+    std::vector<Yaku> EvaluateDisplayYaku(const HandState& handState, const std::vector<Tile>& winningCandidates) const;
+    std::vector<YakuScore> CalculateDisplayYakuScores(const std::vector<Yaku>& yaku, const HandContext& context) const;
+    HandViewAnalysis AnalyzeHandView(const std::vector<Tile>& hand, const HandContext& context) const;
+    HandViewAnalysis AnalyzeHandView(const HandState& handState) const;
+};
+
 Tile Man(int rank);
 Tile Pin(int rank);
 Tile Sou(int rank);

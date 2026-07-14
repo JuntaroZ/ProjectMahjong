@@ -80,6 +80,7 @@ std::vector<OpenMeldImages> g_openMeldImages;
 std::vector<mahjong::Tile> g_hand;
 std::vector<OpenMeld> g_openMelds;
 std::vector<mahjong::Tile> g_winningCandidates;
+mahjong::MahjongLibrary g_mahjongLibrary;
 mahjong::HandContext g_context;
 mahjong::HandContext g_baseContext;
 std::wstring g_yakuText;
@@ -250,7 +251,7 @@ void UpdateYakuText()
     }
 
     try {
-        const mahjong::HandViewAnalysis analysis = mahjong::AnalyzeHandView(CurrentHandState());
+        const mahjong::HandViewAnalysis analysis = g_mahjongLibrary.AnalyzeHandView(CurrentHandState());
         if (!analysis.winning && !analysis.ready) {
             g_yakuText.clear();
             return;
@@ -282,7 +283,7 @@ void UpdateShantenText()
     }
 
     try {
-        const mahjong::HandViewAnalysis analysis = mahjong::AnalyzeHandView(CurrentHandState());
+        const mahjong::HandViewAnalysis analysis = g_mahjongLibrary.AnalyzeHandView(CurrentHandState());
         if (analysis.winning) {
             g_shantenText = analysis.riichiOnlyWin ? L"和了（リーチのみ）" : L"和了";
         }
@@ -322,7 +323,7 @@ void UpdateWinningTileFromHand()
     if (HasRiichiBlockingMeld()) {
         g_context.isRiichi = false;
         g_baseContext.isRiichi = false;
-        mahjong::SetRiichiYaku(false);
+        g_mahjongLibrary.SetRiichiYaku(false);
     }
 }
 
@@ -474,25 +475,25 @@ void LoadOpenMeldImages()
 bool CanChiSelectedTile()
 {
     return g_selectionArea == SelectionArea::HandTile
-        && mahjong::CanChi(CurrentHandState(), g_selectedTile);
+        && g_mahjongLibrary.CanChi(CurrentHandState(), g_selectedTile);
 }
 
 bool CanPonSelectedTile()
 {
     return g_selectionArea == SelectionArea::HandTile
-        && mahjong::CanPon(CurrentHandState(), g_selectedTile);
+        && g_mahjongLibrary.CanPon(CurrentHandState(), g_selectedTile);
 }
 
 bool CanKanSelectedTile()
 {
     return g_selectionArea == SelectionArea::HandTile
-        && mahjong::CanKan(CurrentHandState(), g_selectedTile);
+        && g_mahjongLibrary.CanKan(CurrentHandState(), g_selectedTile);
 }
 
 bool CanMinkanSelectedTile()
 {
     return g_selectionArea == SelectionArea::HandTile
-        && mahjong::CanMinkan(CurrentHandState(), g_selectedTile);
+        && g_mahjongLibrary.CanMinkan(CurrentHandState(), g_selectedTile);
 }
 
 void UpdateMeldButtonState()
@@ -513,15 +514,15 @@ void UpdateWinningCandidates()
         return;
     }
 
-    g_winningCandidates = mahjong::FindWinningCandidates(handState);
+    g_winningCandidates = g_mahjongLibrary.FindWinningCandidates(handState);
 
     LoadWinningCandidateImages();
 }
 
 std::vector<std::wstring> CollectDisplayYakuLines()
 {
-    std::vector<mahjong::Yaku> yaku = mahjong::EvaluateDisplayYaku(CurrentHandState(), g_winningCandidates);
-    const std::vector<mahjong::YakuScore> scores = mahjong::CalculateDisplayYakuScores(yaku, g_context);
+    std::vector<mahjong::Yaku> yaku = g_mahjongLibrary.EvaluateDisplayYaku(CurrentHandState(), g_winningCandidates);
+    const std::vector<mahjong::YakuScore> scores = g_mahjongLibrary.CalculateDisplayYakuScores(yaku, g_context);
 
     std::vector<std::wstring> lines;
     lines.reserve(scores.size());
@@ -646,7 +647,7 @@ void ChangeSelectedTileSuit(int direction)
 bool MakeChiMeld()
 {
     mahjong::HandState state = CurrentHandState();
-    if (!mahjong::MakeChi(state, g_selectedTile)) {
+    if (!g_mahjongLibrary.MakeChi(state, g_selectedTile)) {
         return false;
     }
 
@@ -664,16 +665,16 @@ bool MakeSameTileMeld(OpenMeldType type, int count)
     bool made = false;
     switch (type) {
     case OpenMeldType::Pon:
-        made = mahjong::MakePon(state, g_selectedTile);
+        made = g_mahjongLibrary.MakePon(state, g_selectedTile);
         break;
     case OpenMeldType::Kan:
-        made = mahjong::MakeKan(state, g_selectedTile);
+        made = g_mahjongLibrary.MakeKan(state, g_selectedTile);
         break;
     case OpenMeldType::Minkan:
-        made = mahjong::MakeMinkan(state, g_selectedTile);
+        made = g_mahjongLibrary.MakeMinkan(state, g_selectedTile);
         break;
     case OpenMeldType::Chi:
-        made = mahjong::MakeChi(state, g_selectedTile);
+        made = g_mahjongLibrary.MakeChi(state, g_selectedTile);
         break;
     }
     if (!made) {
@@ -689,7 +690,7 @@ bool MakeSameTileMeld(OpenMeldType type, int count)
 bool ReturnSelectedMeld()
 {
     mahjong::HandState state = CurrentHandState();
-    if (!mahjong::ReturnOpenMeld(state, g_selectedMeld)) {
+    if (!g_mahjongLibrary.ReturnOpenMeld(state, g_selectedMeld)) {
         return false;
     }
 
@@ -1666,7 +1667,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
             }
             g_context.isRiichi = !g_context.isRiichi;
             g_baseContext.isRiichi = g_context.isRiichi;
-            mahjong::SetRiichiYaku(g_context.isRiichi);
+            g_mahjongLibrary.SetRiichiYaku(g_context.isRiichi);
             UpdateYakuText();
             InvalidateYakuTextArea(hwnd);
             RECT rect = RiichiCheckBoxRect();
@@ -1746,7 +1747,7 @@ int ShowHandWindow(HINSTANCE instance, std::vector<mahjong::Tile> hand, const ma
     g_hand = std::move(hand);
     g_context = context;
     g_baseContext = context;
-    mahjong::SetRiichiYaku(g_context.isRiichi);
+    g_mahjongLibrary.SetRiichiYaku(g_context.isRiichi);
     g_openMelds.clear();
     g_openMeldImages.clear();
     g_selectionArea = SelectionArea::HandTile;
@@ -1841,7 +1842,8 @@ int main()
     context.isTsumo = true;
     context.winningTile = hand.back();
 
-    const YakuResult result = EvaluateYaku(hand, context);
+    MahjongLibrary mahjongLibrary;
+    const YakuResult result = mahjongLibrary.EvaluateYaku(hand, context);
     if (result.validWinningShape) {
         std::cout << "Yaku:\n";
         for (const Yaku& yaku : result.yaku) {

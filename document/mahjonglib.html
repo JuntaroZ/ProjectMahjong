@@ -229,8 +229,8 @@
         <table>
           <thead><tr><th>ファイル</th><th>役割</th></tr></thead>
           <tbody>
-            <tr><td><code>MahjongYaku.h</code></td><td>外部公開 API、牌、手牌（てはい）条件、役、解析結果の型定義。</td></tr>
-            <tr><td><code>MahjongYaku.cpp</code></td><td>役判定 API、シャンテン計算、和了（ほうら）候補探索、鳴き（なき）操作、表示用役一覧生成、表示用点数計算。</td></tr>
+            <tr><td><code>MahjongYaku.h</code></td><td><code>MahjongLibrary</code> クラス、外部公開 API、牌、手牌（てはい）条件、役、解析結果の型定義。</td></tr>
+            <tr><td><code>MahjongYaku.cpp</code></td><td><code>MahjongLibrary</code> クラス実装、役判定 API、シャンテン計算、和了（ほうら）候補探索、鳴き（なき）操作、表示用役一覧生成、表示用点数計算。</td></tr>
             <tr><td><code>MahjongHandAnalysis.h/.cpp</code></td><td>手牌（てはい）の内部解析、面子（めんつ）分解、七対子（ちーといつ）、国士無双（こくしむそう）の形判定。</td></tr>
             <tr><td><code>YakuRules</code></td><td>役ごとの判定クラス、役名、翻数（はんすう）、役満（やくまん）設定。</td></tr>
           </tbody>
@@ -421,6 +421,11 @@ struct HandState {
 
       <section id="api">
         <h2>公開 API</h2>
+        <p>通常は <code>MahjongLibrary</code> クラスを生成し、クラスメソッドとして各機能を呼び出します。従来の関数形式 API も互換用に残しています。</p>
+        <pre><code>mahjong::MahjongLibrary library;
+mahjong::YakuResult result = library.EvaluateYaku(handState);
+std::vector&lt;mahjong::Tile&gt; candidates = library.FindWinningCandidates(handState);</code></pre>
+
         <h3>EvaluateYaku</h3>
         <pre><code>YakuResult EvaluateYaku(const std::vector&lt;Tile&gt;&amp; closedTiles, const HandContext&amp; context);</code></pre>
         <pre><code>YakuResult EvaluateYaku(const HandState&amp; handState);</code></pre>
