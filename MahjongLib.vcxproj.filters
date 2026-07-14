@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{D15D353C-9903-4AC1-B585-F52B76BBE3F5}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Source Files\YakuRules">
+      <UniqueIdentifier>{D45F7F77-F91A-4D4B-8F24-4D55E7365CF7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{A7FF91D2-B58E-4F64-A94D-5048CAEC4354}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files\YakuRules">
+      <UniqueIdentifier>{B1E6EA3A-D08F-4332-9398-21F735D84A5F}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="MahjongLib\MahjongHandAnalysis.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="MahjongLib\MahjongYaku.cpp"><Filter>Source Files</Filter></ClCompile>
+    <ClCompile Include="MahjongLib\YakuRules\ChankanRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="MahjongLib\YakuRules\ChantaRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="MahjongLib\YakuRules\ChihoRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="MahjongLib\YakuRules\ChiitoitsuRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="MahjongLib\YakuRules\ChinitsuRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="MahjongLib\YakuRules\ChinroutouRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="MahjongLib\YakuRules\ChuurenPoutouRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="MahjongLib\YakuRules\DaisangenRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="MahjongLib\YakuRules\DaisuushiiRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="MahjongLib\YakuRules\HaiteiRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="MahjongLib\YakuRules\HonitsuRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="MahjongLib\YakuRules\HonroutouRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="MahjongLib\YakuRules\HouteiRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="MahjongLib\YakuRules\IipeikouRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="MahjongLib\YakuRules\IppatsuRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="MahjongLib\YakuRules\IttsuRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="MahjongLib\YakuRules\JunchanRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="MahjongLib\YakuRules\KokushiRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="MahjongLib\YakuRules\MenzenTsumoRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="MahjongLib\YakuRules\PinfuRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="MahjongLib\YakuRules\RiichiRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="MahjongLib\YakuRules\RinshanRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="MahjongLib\YakuRules\RyanpeikouRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="MahjongLib\YakuRules\RyuuiisouRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="MahjongLib\YakuRules\SanankouRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="MahjongLib\YakuRules\SanshokuDoujunRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="MahjongLib\YakuRules\SanshokuDoukouRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="MahjongLib\YakuRules\ShousangenRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="MahjongLib\YakuRules\ShousuushiiRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="MahjongLib\YakuRules\SuuankouRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="MahjongLib\YakuRules\TanyaoRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="MahjongLib\YakuRules\TenhoRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="MahjongLib\YakuRules\ToitoiRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="MahjongLib\YakuRules\TsuuiisouRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="MahjongLib\YakuRules\YakuhaiRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="MahjongLib\YakuRules\YakuRule.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+    <ClCompile Include="MahjongLib\YakuRules\YakuRuleRegistry.cpp"><Filter>Source Files\YakuRules</Filter></ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="MahjongLib\MahjongHandAnalysis.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="MahjongLib\MahjongYaku.h"><Filter>Header Files</Filter></ClInclude>
+    <ClInclude Include="MahjongLib\YakuRules\YakuRule.h"><Filter>Header Files\YakuRules</Filter></ClInclude>
+    <ClInclude Include="MahjongLib\YakuRules\YakuRules.h"><Filter>Header Files\YakuRules</Filter></ClInclude>
+  </ItemGroup>
+</Project>

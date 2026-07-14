@@ -4,6 +4,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 VisualStudioVersion = 17.12.35707.178 d17.12
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ProjectMahjong", "ProjectMahjong.vcxproj", "{4171AE6F-0047-4C95-9195-7B869AFC700C}"
+	ProjectSection(ProjectDependencies) = postProject
+		{0B873568-D0B3-4B03-8C1A-5F2B70F3D9F4} = {0B873568-D0B3-4B03-8C1A-5F2B70F3D9F4}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MahjongLib", "MahjongLib.vcxproj", "{0B873568-D0B3-4B03-8C1A-5F2B70F3D9F4}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +26,14 @@ Global
 		{4171AE6F-0047-4C95-9195-7B869AFC700C}.Release|x64.Build.0 = Release|x64
 		{4171AE6F-0047-4C95-9195-7B869AFC700C}.Release|x86.ActiveCfg = Release|Win32
 		{4171AE6F-0047-4C95-9195-7B869AFC700C}.Release|x86.Build.0 = Release|Win32
+		{0B873568-D0B3-4B03-8C1A-5F2B70F3D9F4}.Debug|x64.ActiveCfg = Debug|x64
+		{0B873568-D0B3-4B03-8C1A-5F2B70F3D9F4}.Debug|x64.Build.0 = Debug|x64
+		{0B873568-D0B3-4B03-8C1A-5F2B70F3D9F4}.Debug|x86.ActiveCfg = Debug|Win32
+		{0B873568-D0B3-4B03-8C1A-5F2B70F3D9F4}.Debug|x86.Build.0 = Debug|Win32
+		{0B873568-D0B3-4B03-8C1A-5F2B70F3D9F4}.Release|x64.ActiveCfg = Release|x64
+		{0B873568-D0B3-4B03-8C1A-5F2B70F3D9F4}.Release|x64.Build.0 = Release|x64
+		{0B873568-D0B3-4B03-8C1A-5F2B70F3D9F4}.Release|x86.ActiveCfg = Release|Win32
+		{0B873568-D0B3-4B03-8C1A-5F2B70F3D9F4}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
